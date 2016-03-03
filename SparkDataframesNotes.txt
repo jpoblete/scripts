@@ -68,11 +68,18 @@ Start the DSE Spark shell and define the Dataframe
 import org.apache.spark.sql._
 import org.apache.spark.sql.cassandra._
 val sqlContext = new SQLContext(sc)
+// Dataframe definition
 val df = sqlContext.read.format("org.apache.spark.sql.cassandra").options(Map( "table" -> "students", "keyspace" -> "studentdata" )).load()
+// Print the schema in a tree format
+df.printSchema()
+root
+ |-- name: string (nullable = true)
+ |-- age: integer (nullable = true)
+ |-- subcodes: array (nullable = true)
+ |    |-- element: string (containsNull = true)
+
+// Displays the content of the DataFrame to stdout
 df.show
-
-Result
-
 +--------+---+--------------------+
 |    name|age|            subcodes|
 +--------+---+--------------------+
@@ -83,3 +90,47 @@ Result
 |student2| 19|ArrayBuffer(SCI10...|
 |student1| 18|ArrayBuffer(SCI10...|
 +--------+---+--------------------+
+
+// Select only the "name" column
+df.select("name").show()
++--------+
+|    name|
++--------+
+|student4|
+|student5|
+|student3|
+|student6|
+|student2|
+|student1|
++--------+
+
+// Select people older than 21
+df.filter(df("age") > 21).show()
++--------+---+--------------------+
+|    name|age|            subcodes|
++--------+---+--------------------+
+|student4| 22|ArrayBuffer(ART2002)|
+|student5| 23|ArrayBuffer(HIS30...|
++--------+---+--------------------+
+
+// Select the names of people older than 21
+df.filter(df("age") > 21).select("name").show()
++--------+
+|    name|
++--------+
+|student4|
+|student5|
++--------+
+
+// Count people by age
+df.groupBy("age").count().show()
++---+-----+                                                                     
+|age|count|
++---+-----+
+| 18|    1|
+| 19|    1|
+| 21|    2|
+| 22|    1|
+| 23|    1|
++---+-----+
+
