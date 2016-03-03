@@ -1,0 +1,69 @@
+Spark Exercises...
+
+Run this on CQLSH
+
+CREATE KEYSPACE studentdata WITH replication = {'class': 'SimpleStrategy', 'replication_factor': '1'}  AND durable_writes = true;
+
+CREATE TABLE studentdata.students (
+    name text PRIMARY KEY,
+    age int,
+    subcodes set<text>
+) WITH bloom_filter_fp_chance = 0.01
+    AND caching = '{"keys":"ALL", "rows_per_partition":"NONE"}'
+    AND comment = ''
+    AND compaction = {'class': 'org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy'}
+    AND compression = {'sstable_compression': 'org.apache.cassandra.io.compress.LZ4Compressor'}
+    AND dclocal_read_repair_chance = 0.1
+    AND default_time_to_live = 0
+    AND gc_grace_seconds = 864000
+    AND max_index_interval = 2048
+    AND memtable_flush_period_in_ms = 0
+    AND min_index_interval = 128
+    AND read_repair_chance = 0.0
+    AND speculative_retry = '99.0PERCENTILE';
+
+cqlsh> select * from studentdata.students;
+
+ name     | age | subcodes
+----------+-----+------------------------
+ student3 |  21 |            {'ART2001'}
+ student4 |  22 |            {'ART2002'}
+ student6 |  21 |            {'SCI1002'}
+ student5 |  23 | {'HIS3001', 'SCI1001'}
+ student2 |  19 | {'SCI1001', 'SCI1002'}
+ student1 |  18 | {'SCI1001', 'SCI1002'}
+
+(6 rows)
+
+Edit file /etc/dse/spark/logback-spark.xml and make it to look like this
+
+<configuration scan="true">
+  ...
+    <logger name="org.eclipse.jetty" level="ERROR"/>
+    <logger name="com.datastax.driver.core" level="DEBUG"/>
+</configuration>
+
+That will start Java driver logging - which is used by the Spark-Cassandra connector
+
+Start the DSE Spark shell and execute
+
+import org.apache.spark.sql._
+import org.apache.spark.sql.cassandra._
+val sqlContext = new SQLContext(sc)
+val df = sqlContext.read.format("org.apache.spark.sql.cassandra").options(Map( "table" -> "students", "keyspace" -> "studentdata" )).load()
+df.show
+
+Result
+
++--------+---+--------------------+
+|    name|age|            subcodes|
++--------+---+--------------------+
+|student4| 22|ArrayBuffer(ART2002)|
+|student5| 23|ArrayBuffer(HIS30...|
+|student3| 21|ArrayBuffer(ART2001)|
+|student6| 21|ArrayBuffer(SCI1002)|
+|student2| 19|ArrayBuffer(SCI10...|
+|student1| 18|ArrayBuffer(SCI10...|
++--------+---+--------------------+
+
+
