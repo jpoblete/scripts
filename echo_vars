@@ -1,0 +1,21 @@
+#!/bin/bash
+#
+# Initialization
+#
+: ${a:="1"}
+: ${a1:="2"}
+: ${a11:="3"}
+: ${a111:="4"}
+
+function echo_vars(){
+_len=0
+for i in $@; do
+    [ $(echo ${#i}) -gt ${_len} ] && _len=$(echo ${#i})
+done
+for i in $@; do
+    eval _i=\$${i}
+    printf "%-"${_len}"s = %-s \n" ${i} ${_i}
+done
+}
+
+echo_vars a a1 a11 a111
