@@ -22,7 +22,20 @@ CREATE TABLE studentdata.students (
     AND read_repair_chance = 0.0
     AND speculative_retry = '99.0PERCENTILE';
 
-cqlsh> select * from studentdata.students;
+Add this data to the table
+
+$ cat students.dat 
+student4,22,{'ART2002'}
+student6,21,{'SCI1002'}
+student3,21,{'ART2001'}
+student1,18,"{'SCI1001', 'SCI1002'}"
+student5,23,"{'HIS3001', 'SCI1001'}"
+student2,19,"{'SCI1001', 'SCI1002'}"
+
+From CQLSH
+
+COPY studentdata.students FROM 'students.dat';
+SELECT * FROM studentdata.students;
 
  name     | age | subcodes
 ----------+-----+------------------------
@@ -45,7 +58,7 @@ Edit file /etc/dse/spark/logback-spark.xml and make it to look like this
 
 That will start Java driver logging - which is used by the Spark-Cassandra connector
 
-Start the DSE Spark shell and execute
+Start the DSE Spark shell and define the Dataframe
 
 import org.apache.spark.sql._
 import org.apache.spark.sql.cassandra._
@@ -65,5 +78,3 @@ Result
 |student2| 19|ArrayBuffer(SCI10...|
 |student1| 18|ArrayBuffer(SCI10...|
 +--------+---+--------------------+
-
-
