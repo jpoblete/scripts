@@ -1,2 +1,2 @@
 # scripts
-Miscellaneous scripts
+Just miscellaneous scripts
