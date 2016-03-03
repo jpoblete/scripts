@@ -1,3 +1,8 @@
+Resources:
+
+https://spark.apache.org/docs/1.4.0/sql-programming-guide.html
+https://drive.google.com/a/datastax.com/file/d/0BwempBLstPAYalBQQl9Fc3hESjA/view?usp=sharing
+
 Spark Exercises...
 
 Run this on CQLSH
