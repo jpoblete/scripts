@@ -1,7 +1,10 @@
 #!/bin/bash
 #
-# Repair will be executed by keyspace.table & token range
+# Repair on the primary range will be executed by keyspace.table & token range
+# Because it works on the primary range, it needs to be executed on each node of the DC/Cluster
+#
 # Assumptions:
+#
 # * Cassandra is running
 # * nodetool is available via PATH env var
 #
