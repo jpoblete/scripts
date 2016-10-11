@@ -89,34 +89,45 @@ if [ -z ${PID} ]; then
    [ -z "${PID}" ]             && PID=$(ps -ef | awk '/java/ && !/awk/ && /cassandra/ {print $2}')
    [ -z "${PID}" ]             && echo "Error: Could not determine Cassandra\'s PID, exiting..." && exit 1
 else
-   [ "${PID}" != "$(ps aux | awk '/'"${PID}"'/ && /java/ && !/awk/{print $2}')" ] && echo "Error: Could not find a java PID=${PID}, exiting..." && exit 1
-fi
-#
-if [ "${PGM}" ]; then
-   if [[ "${PGM}" == kill ]]; then
-      PGM="kill -3"
-   else
-      PGM="jstack -l"
+   if [ "${PID}" != "$(ps -p ${PID} | tail -1 | awk '{print $1}')" ]; then
+      echo "Error: Could not find a java PID=${PID}, exiting..."
+      exit 1
    fi
-else
-   PGM="jstack -l"
 fi
 #
-# Check that jstack is present
+# We use jstack by default or whatever specified on cmd line
+# Also check that jstack is present/executable
 #
-if [ "${PGM}" != "kill -3" ]; then
-   [ "$(which locate)" ] && PGM=$(for i in $(locate ${PGM% *}); do [ "${i##*/}" == "jstack" ] && [ -x ${i} ] && echo ${i}; done)
-   [ "x${PGM}" == "x" ] && PGM=$(which jstack)
-   [ ! -x "${PGM}" ] && PGM="kill -3" && echo "Notice: jstack not found, using kill -3 instead"
+if [ ! -x "${PGM}" ] then 
+   [ "${PGM}" ] && echo "Notice: ${PGM} provided is not executable"
+   PGM="jstack"
+   if [ "${PGM}" != "kill" ]; then
+      if [ -x "$(which jstack)" ]; then
+         PGM=$(which jstack)
+      else
+         PGM="kill"   
+         echo "Notice: jstack not found, using kill -3 instead"
+      fi
+   fi
 fi
 #
 # Check I'm the JVM owner 
 #
-ME=$(whoami)
-C_USER=$(egrep -w $(ps -ef | awk '/'${PID}'/ && !/awk/ {print $1}' | sort -u ) /etc/passwd | cut -f 1 -d ':')
+ME=${USER}
+ME_UID=$(id -u ${ME})
+C_USER_UID=$(ps -e -o uid,pid,cmd | awk '( $2 == '"${PID}"'){print $1}')
+C_USER=$(getent passwd ${C_USER_UID} | cut -d: -f1)
+#
+# Check we have valid interval/counts
+#
 ( [ -z "${INTERVAL}" ] || [ -z "${COUNT}" ] ) && usage
 #
 main(){
+   if [ "$(echo ${PGM##*\/})" == jstack ]; then
+      PGM="${PGM} -l"
+   else
+      PGM="${PGM} -3"
+   fi
    echo "Begin processing..."
    rm -f /tmp/top.out /tmp/jstack.out/ /tmp/topThreads.out
    RUN="true"
