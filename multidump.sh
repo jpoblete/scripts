@@ -76,13 +76,21 @@ while [ $# -gt 0 ] ; do
                  ;;
         esac
 done
+#
+# These are our arguments
+#
 #INTERVAL=$1
 #COUNT=$2
 #PID=$3
 #PGM=$4
-[ -z "${INTERVAL}" ] && INTERVAL=5
 #
+# Check we have valid interval/counts
+#
+[ -z "${INTERVAL}" ] && INTERVAL=5
 [ -z "${COUNT}"    ] && COUNT=60
+( [ "${INTERVAL}" -le 0 ] || [ -z "${COUNT}" -le 0 ] ) && usage
+#
+# Check the PID
 #
 if [ -z ${PID} ]; then
    [ -f /var/run/dse/dse.pid ] && PID=$(cat /var/run/dse/dse.pid)
@@ -109,18 +117,28 @@ if [ ! -x "${PGM}" ] then
          echo "Notice: jstack not found, using kill -3 instead"
       fi
    fi
+else
+   echo "Notice: Using ${PGM}"
 fi
 #
-# Check I'm the JVM owner 
+# Check who is executing this script
+# Find out who is the cassandra user -> JVM owner 
 #
 ME=${USER}
 ME_UID=$(id -u ${ME})
 C_USER_UID=$(ps -e -o uid,pid,cmd | awk '( $2 == '"${PID}"'){print $1}')
 C_USER=$(getent passwd ${C_USER_UID} | cut -d: -f1)
 #
-# Check we have valid interval/counts
+# If this is executed as the cassandra user, then continue to main()
+# Otherwise, we need to fork as the JVM owner 
 #
-( [ -z "${INTERVAL}" ] || [ -z "${COUNT}" ] ) && usage
+if [ "${ME}" != "${C_USER}" ]; then
+   sudo su -c "$(echo "$0 -i ${INTERVAL} -c ${COUNT} -pid ${PID} -pgm ${PGM}")" -s /bin/bash ${C_USER}
+else
+   main
+fi
+#
+# This is where the thread dump is executed
 #
 main(){
    if [ "$(echo ${PGM##*\/})" == jstack ]; then
@@ -146,11 +164,4 @@ main(){
    tar czvpf multidump.tgz *.out
    echo "End processing, please collect /tmp/multidump.tgz"
 }
-
-
-if [ "${ME}" != "${C_USER}" ]; then
-   sudo su -c "$(echo "$0 $@")" -s /bin/bash ${C_USER}
-else
-   main
-fi
 #EOF
