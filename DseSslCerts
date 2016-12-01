@@ -8,7 +8,12 @@ function SslCerts(){
 # Use an alias that identifies the node
 # Output file is in .keystore
 #
-keytool -genkey -keyalg RSA -alias node0 -keystore .keystore -storepass cassandra -keypass cassandra -dname "CN=node0, OU=Engineering, O=DataStax, L=Santa Clara, C=US"
+CN="node0"
+OU="Operations"
+O="Acme"
+L="Malvern, PA"
+C="US"
+keytool -genkey -keyalg RSA -alias node0 -keystore .keystore -storepass cassandra -keypass cassandra -dname "CN=${CN}, OU=${E}, O=${O}, L=${L}, C=${C}"
 #
 # Export the public part to node0.cer
 # FILE node0.cer WILL BE USED LATER FOR CQLSHRC
