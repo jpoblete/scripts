@@ -1,0 +1,93 @@
+#!/bin/bash
+
+rm -f .truststore .keystore* node0.cer*
+
+function SslCerts(){
+#
+# Generate a private and public key pair on each node of the cluster.
+# Use an alias that identifies the node
+# Output file is in .keystore
+#
+keytool -genkey -keyalg RSA -alias node0 -keystore .keystore -storepass cassandra -keypass cassandra -dname "CN=node0, OU=Engineering, O=DataStax, L=Santa Clara, C=US"
+#
+# Export the public part to node0.cer
+# FILE node0.cer WILL BE USED LATER FOR CQLSHRC
+#
+keytool -export -noprompt -alias node0 -file node0.cer -keystore .keystore -keypass cassandra << !
+cassandra
+!
+#
+# Import the public key to the node0
+# output file is in .truststore
+#
+keytool -import -v -trustcacerts -alias node0 -file node0.cer -keystore .truststore << !
+cassandra
+cassandra
+yes
+!
+#
+# cqlsh does not work with the certificate in the format generated.
+# openssl is used to generate a PEM file of the certificate with no keys, node0.cer.pem
+# Then a PEM file of the key with no certificate, node0.key.pem.
+# First, the keystore is imported in PKCS12 format to a destination keystore, node0.p12, in the example.
+# This is followed by the two commands that convert create the two PEM files.
+# THE PEM FILES ARE THE ONES USED FOR CQLSHRC CLIENT AUTH!!!!!
+# node0.cer.pem
+# node0.key.pem
+#
+keytool -importkeystore -srckeystore .keystore -destkeystore .keystore.p12 -deststoretype PKCS12 -srcstorepass cassandra -deststorepass cassandra
+openssl pkcs12 -in .keystore.p12 -nokeys         -out node0.cer.pem -passin pass:cassandra
+openssl pkcs12 -in .keystore.p12 -nodes -nocerts -out node0.key.pem -passin pass:cassandra
+#
+# Close the permissions
+#
+chmod 700 .truststore .keystore* *.pem
+}
+
+
+SslCerts > /dev/null 2>&1
+echo "Certifictes, .keystore & .truststore were created at $(pwd)"
+echo "Use them for your cassandra.yaml:"
+echo "
+    server_encryption_options:
+    internode_encryption: all
+    keystore: /etc/dse/cassandra/.keystore
+    keystore_password: cassandra
+    truststore: /etc/dse/cassandra/.truststore
+    truststore_password: cassandra
+    # More advanced defaults below:
+    protocol: TLS
+    algorithm: SunX509
+    store_type: JKS
+    cipher_suites: [TLS_RSA_WITH_AES_128_CBC_SHA]
+    require_client_auth: true
+
+    # enable or disable client/server encryption.
+    client_encryption_options:
+    enabled: true
+    # If enabled and optional is set to true encrypted and unencrypted connections are handled.
+    optional: false
+    keystore: /etc/dse/cassandra/.keystore
+    keystore_password: cassandra
+    require_client_auth: true
+    # Set trustore and truststore_password if require_client_auth is true
+    truststore: /etc/dse/cassandra/.truststore
+    truststore_password: cassandra
+    # More advanced defaults below:
+    protocol: TLS
+    algorithm: SunX509
+    store_type: JKS
+    cipher_suites: [TLS_RSA_WITH_AES_128_CBC_SHA]
+
+"
+
+echo "Also use the pem files for ~/.cassandra/cqlshrc: "
+echo "
+   [ssl]
+   certfile = /Users/JPoblete/dse/resources/dse/conf/node0.cer.pem
+   validate = true
+   userkey  = /Users/JPoblete/dse/resources/dse/conf/node0.key.pem
+   usercert = /Users/JPoblete/dse/resources/dse/conf/node0.cer.pem
+
+"
+exit 0
