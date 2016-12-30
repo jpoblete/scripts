@@ -1,0 +1,36 @@
+#!/bin/bash
+#
+# Scan a keyspace.table by token range
+#
+# Assumptions:
+#
+# * Cassandra is running
+# * nodetool is available via PATH env var
+#
+
+random-string() {
+   cat /dev/urandom | LC_CTYPE=C tr -dc 'a-zA-Z0-9' | fold -w ${1:-8} | head -n 1
+}
+
+CQLSH="cqlsh -u cassandra -p cassandra"
+KSP=$1
+TBL=$2
+SCHDEF=$(echo "describe schema;" | ${CQLSH})
+KSPDEF=$(echo "${SCHDEF}"        | sed -n '/'${KSP}'/,/KEYSPACE/p' | sed '$d')
+TBLDEF=$(echo "${KSPDEF}"        | sed -n '/'${TBL}' (/,/CREATE TABLE/p' | sed '$d')
+COLNMS=$(echo "${TBLDEF}"        | sed -n '/(/,/)/p' | tail -n +2 | sed '$d' | awk '{print $1}' | tr -s '\n' ',' | sed 's/.$//')
+PRIKEY=$(echo "${TBLDEF}"        | egrep -i "PRIMARY KEY")
+# TODO: Extract the PK columns   => ${PRIKEY}
+OFILE=scanTblByRange_$(random-string).cql
+
+echo "CONSISTENCY ONE;" > ${OFILE}
+for RANGE in $(nodetool describering ${KSP}                           \
+              |awk -F: '/TokenRange/ && /start_token/ {print $2, $3}' \
+              |awk '{print "token(${PRIKEY})_>=_"$1"_and_token(${PRIKEY})_<=_"$3}'); do
+    RANGE=${RANGE//_/ }
+    RANGE=${RANGE//,/}
+    RANGE=${RANGE//+/_}
+    COLNMS=${COLNM//,/, }
+    echo "select token(${PRIKEY}), ${COLNMS} FROM ${TBL} WHERE ${RANGE};" >> ${OFILE}
+done
+${CQLSH} -k ${KSP} -f ${OFILE} | egrep -B4 "^\([1-9]+ rows\)"
