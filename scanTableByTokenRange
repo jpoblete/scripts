@@ -7,6 +7,8 @@
 # * Cassandra is running
 # * nodetool is available via PATH env var
 #
+# Usage:
+# scanTableByTokenRange <Keyspace> <Table>
 
 random-string() {
    cat /dev/urandom | LC_CTYPE=C tr -dc 'a-zA-Z0-9' | fold -w ${1:-8} | head -n 1
