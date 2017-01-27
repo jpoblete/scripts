@@ -46,6 +46,7 @@ yes
 #
 #
 # CQLSH SECTION
+# =============
 # cqlsh does not work with the certificate in the format generated.
 # openssl is used to generate a PEM file of the certificate with no keys, node0.cer.pem
 # Then a PEM file of the key with no certificate, node0.key.pem.
