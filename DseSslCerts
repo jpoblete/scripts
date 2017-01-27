@@ -1,9 +1,12 @@
 #!/bin/bash
 
+
 rm -f .truststore .keystore* node0.cer*
 
 function SslCerts(){
 #
+# KEYSTORE SECTION
+# ================
 # Generate a private and public key pair on each node of the cluster.
 # Use an alias that identifies the node
 # Output file is in .keystore
@@ -22,6 +25,13 @@ keytool -export -noprompt -alias node0 -file node0.cer -keystore .keystore -keyp
 cassandra
 !
 #
+# FOR SIMPLICITY, WE HAVE ONLY ONE KEYSTORE/TRUSTSTORE 
+# HOWEVER, EACH NODE COULD HAVE HAVE IT'S OWN TRUSTSTORE.  
+# IN THAT CASE, REPEAT THE STEPS ABOVE ON node1, node2, etc
+#
+#
+# TRUSTSTORE SECTION
+# ==================
 # Import the public key to the node0
 # output file is in .truststore
 #
@@ -31,6 +41,10 @@ cassandra
 yes
 !
 #
+# IF EACH NODE HAS IT'S OWN KEYSTORE, THEN IMPORT ALL OF THE PUBLIC KEYS FROM ALL NODES
+# INTO THE KEYSTORE, ALL NODES SHOULD HAVE THE SAME KEYSTORE
+#
+# CQLSH SECTION
 # cqlsh does not work with the certificate in the format generated.
 # openssl is used to generate a PEM file of the certificate with no keys, node0.cer.pem
 # Then a PEM file of the key with no certificate, node0.key.pem.
@@ -83,16 +97,16 @@ echo "
     algorithm: SunX509
     store_type: JKS
     cipher_suites: [TLS_RSA_WITH_AES_128_CBC_SHA]
-
+    
 "
 
 echo "Also use the pem files for ~/.cassandra/cqlshrc: "
 echo "
    [ssl]
-   certfile = /Users/JPoblete/dse/resources/dse/conf/node0.cer.pem
+   certfile = /etc/dse/cassandra/node0.cer.pem
    validate = true
-   userkey  = /Users/JPoblete/dse/resources/dse/conf/node0.key.pem
-   usercert = /Users/JPoblete/dse/resources/dse/conf/node0.cer.pem
-
+   userkey  = /etc/dse/cassandra/node0.key.pem
+   usercert = /etc/dse/cassandra/node0.cer.pem
+   
 "
 exit 0
