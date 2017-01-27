@@ -14,7 +14,7 @@ function SslCerts(){
 CN="node0"
 OU="Operations"
 O="Acme"
-L="Malvern, PA"
+L="Malvern PA"
 C="US"
 keytool -genkey -keyalg RSA -alias node0 -keystore .keystore -storepass cassandra -keypass cassandra -dname "CN=${CN}, OU=${E}, O=${O}, L=${L}, C=${C}"
 #
