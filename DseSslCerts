@@ -1,8 +1,5 @@
 #!/bin/bash
 
-
-rm -f .truststore .keystore* node0.cer*
-
 function SslCerts(){
 #
 # KEYSTORE SECTION
@@ -65,7 +62,8 @@ openssl pkcs12 -in .keystore.p12 -nodes -nocerts -out node0.key.pem -passin pass
 chmod 700 .truststore .keystore* *.pem
 }
 
-
+main(){
+rm -f .truststore .keystore* node0.cer*
 SslCerts > /dev/null 2>&1
 echo "Certifictes, .keystore & .truststore were created at $(pwd)"
 echo "Use them for your cassandra.yaml:"
@@ -111,4 +109,6 @@ echo "
    usercert = /etc/dse/cassandra/node0.cer.pem
    
 "
-exit 0
+}
+
+main
