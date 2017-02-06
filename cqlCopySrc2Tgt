@@ -1,0 +1,60 @@
+#!/bin/bash
+#
+# Script to COPY from a SOURCE table's select columns over a TARGET table
+# Assumes the following:
+#
+# * The SOURCE table is very large - otherwise just try:
+#   cqlsh  -e "COPY keyspace.src_table (col1, col2, ...,ColN ) TO STDOUT WITH HEADER=false" \
+#   |cqlsh -e "COPY keyspace.tgt_table (col1, col2, ...,ColN ) FROM STDIN"
+# * SOURCE AND TARGET TABLES are in the SAME KEYSPACE
+# * TARGET columns are named the SAME as SOURCE
+#
+# The script sweeps thru the local tokens to copy only the local data over to the new table
+# Therefore, this script needs to run on every node on the datacenter
+#
+# Set these variables before executing
+#
+USR=cassandra
+PWD=password
+KSP=my_keyspace
+SRC=src_table
+COL="col1, col2, col3"
+TGT=tgt_table
+
+CQLSH="cqlsh -u ${USR} -p ${PWD} -k ${KSP}"
+
+function getTokens(){
+   for i in $($CQLSH -e "select tokens from system.local;" | awk -F, '/{/{print $0}' | tr -d '{' | tr -d '}' | tr -d ','); do
+       echo ${i//\'/}
+   done | sort -n
+}
+
+function getDataByTokenRange(){
+   i=0
+   tokens=($(getTokens))
+   while [ ${i} -lt ${#tokens[@]} ]; do 
+         [ ${i} -eq 0 ]         && echo "SELECT ${COL} FROM ${SRC} WHERE token(key_id) <= ${tokens[i]};" 
+         [ "${tokens[i+1]}" ]   && echo "SELECT ${COL} FROM ${SRC} WHERE token(key_id) >  ${tokens[i]} AND token(key_id) <= ${tokens[i+1]};"
+         [ ! "${tokens[i+1]}" ] && echo "SELECT ${COL} FROM ${SRC} WHERE token(key_id) >  ${tokens[i]};"
+         ((i++))
+   done
+} 
+
+function cqlExec(){ 
+  while IFS='' read -r cql || [[ -n "$line" ]]; do
+    $CQLSH -e "$cql"                                                                       \
+    |awk -F\| '( !/'"${COL/, /|}"'/ && !/^\-+/ && !/^\([0-9]+ rows)/ && !/^$/ ){print $0}' \
+    |sed -e 's/^[ ]*//g' -e 's/[ ]*|[ ]*/|/g'                                              \
+    |$CQLSH -e "COPY ${TGT} (${COL}) FROM STDIN WITH DELIMITER = '|' and HEADER=false;"
+    [ "$?" -gt 0 ] && echo "ERROR: Failed to import data from command: ${command}"
+  done < "$1"
+}
+
+main(){
+   echo "Begin processing ..."
+   getDataByTokenRange > getDataByTokenRange.ddl
+   cqlExec getDataByTokenRange.ddl
+   echo "End procesing"
+}
+
+main
