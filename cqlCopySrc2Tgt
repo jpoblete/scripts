@@ -19,6 +19,7 @@ PWD=password
 KSP=my_keyspace
 SRC=src_table
 COL="col1, col2, col3"
+PKY="col1"
 TGT=tgt_table
 
 CQLSH="cqlsh -u ${USR} -p ${PWD} -k ${KSP}"
@@ -33,9 +34,9 @@ function getDataByTokenRange(){
    i=0
    tokens=($(getTokens))
    while [ ${i} -lt ${#tokens[@]} ]; do 
-         [ ${i} -eq 0 ]         && echo "SELECT ${COL} FROM ${SRC} WHERE token(key_id) <= ${tokens[i]};" 
-         [ "${tokens[i+1]}" ]   && echo "SELECT ${COL} FROM ${SRC} WHERE token(key_id) >  ${tokens[i]} AND token(key_id) <= ${tokens[i+1]};"
-         [ ! "${tokens[i+1]}" ] && echo "SELECT ${COL} FROM ${SRC} WHERE token(key_id) >  ${tokens[i]};"
+         [ ${i} -eq 0 ]         && echo "SELECT ${COL} FROM ${SRC} WHERE token(${PKY}) <= ${tokens[i]};" 
+         [ "${tokens[i+1]}" ]   && echo "SELECT ${COL} FROM ${SRC} WHERE token(${PKY}) >  ${tokens[i]} AND token(${PKY}) <= ${tokens[i+1]};"
+         [ ! "${tokens[i+1]}" ] && echo "SELECT ${COL} FROM ${SRC} WHERE token(${PKY}) >  ${tokens[i]};"
          ((i++))
    done
 } 
