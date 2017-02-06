@@ -5,12 +5,7 @@
 # Assumptions:
 #
 # * Cassandra is running
-# * nodetool is available via PATH env var
-#
-# Usage:
-# scanTableByTokenRange <Keyspace> <Table>
-
-
+# * The following is known
 USR=cassandra
 PWD=cassandra
 KSP=my_keyspace
