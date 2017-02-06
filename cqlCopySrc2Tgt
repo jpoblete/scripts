@@ -42,9 +42,9 @@ function getDataByTokenRange(){
 
 function cqlExec(){ 
   while IFS='' read -r cql || [[ -n "$line" ]]; do
-    $CQLSH -e "$cql"                                                                       \
-    |awk -F\| '( !/'"${COL/, /|}"'/ && !/^\-+/ && !/^\([0-9]+ rows)/ && !/^$/ ){print $0}' \
-    |sed -e 's/^[ ]*//g' -e 's/[ ]*|[ ]*/|/g'                                              \
+    $CQLSH -e "CONSISTENCY LOCAL_ONE; $cql"                                                                \
+    |awk -F\| '( !/LOCAL_ONE/ && !/'"${COL/, /|}"'/ && !/^\-+/ && !/^\([0-9]+ rows)/ && !/^$/ ){print $0}' \
+    |sed -e 's/^[ ]*//g' -e 's/[ ]*|[ ]*/|/g'                                                              \
     |$CQLSH -e "COPY ${TGT} (${COL}) FROM STDIN WITH DELIMITER = '|' and HEADER=false;"
     [ "$?" -gt 0 ] && echo "ERROR: Failed to import data from command: ${command}"
   done < "$1"
