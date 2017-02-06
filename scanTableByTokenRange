@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Scan a keyspace.table by token range
+# Scan a keyspace.table by local token range
 #
 # Assumptions:
 #
@@ -10,29 +10,50 @@
 # Usage:
 # scanTableByTokenRange <Keyspace> <Table>
 
-random-string() {
-   cat /dev/urandom | LC_CTYPE=C tr -dc 'a-zA-Z0-9' | fold -w ${1:-8} | head -n 1
+
+USR=cassandra
+PWD=cassandra
+KSP=my_keyspace
+SRC=my_table
+COL="col1, col2, col3"
+PKY="col1"
+CQLSH="cqlsh -u ${USR} -p ${PWD} -k ${KSP}"
+
+function getTokens(){
+for i in $($CQLSH -e "select tokens from system.local;" | awk -F, '/{/{print $0}' | tr -d '{' | tr -d '}' | tr -d ','); do
+    echo ${i//\'/}
+done | sort -n
 }
 
-CQLSH="cqlsh -u cassandra -p cassandra"
-KSP=$1
-TBL=$2
-SCHDEF=$(echo "describe schema;" | ${CQLSH})
-KSPDEF=$(echo "${SCHDEF}"        | sed -n '/'${KSP}'/,/KEYSPACE/p' | sed '$d')
-TBLDEF=$(echo "${KSPDEF}"        | sed -n '/'${TBL}' (/,/CREATE TABLE/p' | sed '$d')
-COLNMS=$(echo "${TBLDEF}"        | sed -n '/(/,/)/p' | tail -n +2 | sed '$d' | awk '{print $1}' | tr -s '\n' ',' | sed 's/.$//')
-PRIKEY=$(echo "${TBLDEF}"        | egrep -i "PRIMARY KEY")
-# TODO: Extract the PK columns   => ${PRIKEY}
-OFILE=scanTblByRange_$(random-string).cql
+function getTokens(){
+   for i in $($CQLSH -e "select tokens from system.local;" | awk -F, '/{/{print $0}' | tr -d '{' | tr -d '}' | tr -d ','); do
+       echo ${i//\'/}
+   done | sort -n
+}
 
-echo "CONSISTENCY ONE;" > ${OFILE}
-for RANGE in $(nodetool describering ${KSP}                           \
-              |awk -F: '/TokenRange/ && /start_token/ {print $2, $3}' \
-              |awk '{print "token(${PRIKEY})_>=_"$1"_and_token(${PRIKEY})_<=_"$3}'); do
-    RANGE=${RANGE//_/ }
-    RANGE=${RANGE//,/}
-    RANGE=${RANGE//+/_}
-    COLNMS=${COLNM//,/, }
-    echo "select token(${PRIKEY}), ${COLNMS} FROM ${TBL} WHERE ${RANGE};" >> ${OFILE}
-done
-${CQLSH} -k ${KSP} -f ${OFILE} | egrep -B4 "^\([1-9]+ rows\)"
+function getDataByTokenRange(){
+   i=0
+   tokens=($(getTokens))
+   while [ ${i} -lt ${#tokens[@]} ]; do 
+         [ ${i} -eq 0 ]         && echo "SELECT ${COL} FROM ${SRC} WHERE token(${PKY}) <= ${tokens[i]};" 
+         [ "${tokens[i+1]}" ]   && echo "SELECT ${COL} FROM ${SRC} WHERE token(${PKY}) >  ${tokens[i]} AND token(${PKY}) <= ${tokens[i+1]};"
+         [ ! "${tokens[i+1]}" ] && echo "SELECT ${COL} FROM ${SRC} WHERE token(${PKY}) >  ${tokens[i]};"
+         ((i++))
+   done
+} 
+
+function cqlExec(){ 
+  while IFS='' read -r cql || [[ -n "$line" ]]; do
+    $CQLSH -e "CONSISTENCY LOCAL_ONE; $cql"                                                                \
+    |awk -F\| '( !/LOCAL_ONE/ && !/'"${COL/, /|}"'/ && !/^\-+/ && !/^\([0-9]+ rows)/ && !/^$/ ){print $0}' 
+  done < "$1"
+}
+
+main(){
+   echo "Begin processing ..."
+   getDataByTokenRange > getDataByTokenRange.ddl
+   cqlExec getDataByTokenRange.ddl
+   echo "End procesing"
+}
+
+main
