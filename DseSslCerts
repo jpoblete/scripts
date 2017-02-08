@@ -68,7 +68,7 @@ SslCerts > /dev/null 2>&1
 echo "Certifictes, .keystore & .truststore were created at $(pwd)"
 echo "Use them for your cassandra.yaml:"
 echo "
-    server_encryption_options:
+server_encryption_options:
     internode_encryption: all
     keystore: /etc/dse/cassandra/.keystore
     keystore_password: cassandra
@@ -81,8 +81,8 @@ echo "
     cipher_suites: [TLS_RSA_WITH_AES_128_CBC_SHA]
     require_client_auth: true
 
-    # enable or disable client/server encryption.
-    client_encryption_options:
+# enable or disable client/server encryption.
+client_encryption_options:
     enabled: true
     # If enabled and optional is set to true encrypted and unencrypted connections are handled.
     optional: false
@@ -102,11 +102,16 @@ echo "
 
 echo "Also use the pem files for ~/.cassandra/cqlshrc: "
 echo "
-   [ssl]
-   certfile = /etc/dse/cassandra/node0.cer.pem
-   validate = true
-   userkey  = /etc/dse/cassandra/node0.key.pem
-   usercert = /etc/dse/cassandra/node0.cer.pem
+[connection]
+hostname = 127.0.0.1
+port = 9042
+factory = cqlshlib.ssl.ssl_transport_factory
+
+[ssl]
+certfile = /etc/dse/cassandra/node0.cer.pem
+validate = true
+userkey  = /etc/dse/cassandra/node0.key.pem
+usercert = /etc/dse/cassandra/node0.cer.pem
    
 "
 }
