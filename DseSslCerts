@@ -8,7 +8,7 @@ function SslCerts(){
 # Use an alias that identifies the node
 # Output file is in .keystore
 #
-CN="node0"
+CN="dseNode"
 OU="Operations"
 O="Acme"
 L="Malvern PA"
