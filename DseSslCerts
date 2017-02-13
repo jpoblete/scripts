@@ -2,7 +2,7 @@
 
 function SslCerts(){
 #
-# KEYSTORE SECTION 
+# KEYSTORE SECTION
 # ================
 # Generate a private and public key pair on each node of the cluster.
 # Use an alias that identifies the node
@@ -13,21 +13,21 @@ OU="Operations"
 O="Acme"
 L="Malvern PA"
 C="US"
-keytool -genkey -keyalg RSA -alias node0 -keystore .keystore -storepass cassandra -keypass cassandra -dname "CN=${CN}, OU=${E}, O=${O}, L=${L}, C=${C}" 
+keytool -genkey -keyalg RSA -alias node0 -keystore .keystore -storepass cassandra -keypass cassandra -dname "CN=${CN}, OU=${E}, O=${O}, L=${L}, C=${C}"
 #
 # Export the public part to node0.cer
-# FILE node0.cer WILL BE USED LATER FOR CQLSHRC 
+# FILE node0.cer WILL BE USED LATER FOR CQLSHRC
 #
 keytool -export -noprompt -alias node0 -file node0.cer -keystore .keystore -keypass cassandra << !
 cassandra
 !
 #
-# FOR SIMPLICITY, WE HAVE ONLY ONE KEYSTORE/TRUSTSTORE 
-# HOWEVER, EACH NODE COULD HAVE HAVE IT'S OWN TRUSTSTORE.  
+# FOR SIMPLICITY, WE HAVE ONLY ONE KEYSTORE/TRUSTSTORE
+# HOWEVER, EACH NODE COULD HAVE HAVE IT'S OWN TRUSTSTORE.
 # IN THAT CASE, REPEAT THE STEPS ABOVE ON node1, node2, etc
 #
 #
-# TRUSTSTORE SECTION 
+# TRUSTSTORE SECTION
 # ==================
 # Import the public key to the node0
 # output file is in .truststore
@@ -42,7 +42,7 @@ yes
 # INTO THE KEYSTORE.  IN THE END, ALL NODES SHOULD HAVE THE SAME KEYSTORE
 #
 #
-# CQLSH SECTION 
+# CQLSH SECTION
 # =============
 # cqlsh does not work with the certificate in the format generated.
 # openssl is used to generate a PEM file of the certificate with no keys, node0.cer.pem
@@ -66,12 +66,12 @@ main(){
 rm -f .truststore .keystore* node0.cer*
 SslCerts > /dev/null 2>&1
 [ "$?" -gt 0 ]  && echo "ERROR: Failure while creating certs, exiting" && exit 1
-echo "Certifictes, .keystore & .truststore were created at $(pwd)" 
+echo "Certifictes, .keystore & .truststore were created at $(pwd)"
 echo "Backing up configuration..."
 cp cassandra.yaml cassandra.$(date "+%Y%m%d_%H%M%S").yaml
 [ "$?" -gt 0 ]  && echo "ERROR: Failed to backup config file, exiting" && exit 1
 #
-# Node encryption options 
+# Node encryption options
 #
 svr_enc=$(sed -n '/^server_encryption_options:/,/require_client_auth:/p' cassandra.yaml | wc -l)
 echo "server_encryption_options:
@@ -82,11 +82,11 @@ echo "server_encryption_options:
       truststore_password: cassandra
       # More advanced defaults below:
       protocol: TLS
-      algorithm: SunX509 
+      algorithm: SunX509
       store_type: JKS
       cipher_suites: [TLS_RSA_WITH_AES_128_CBC_SHA]
       require_client_auth: true" > svr_enc_opts.txt
-if [ "${svr_enc}" -gt 0 ] && [ "${svr_enc}" -le 12 ]; then 
+if [ "${svr_enc}" -gt 0 ] && [ "${svr_enc}" -le 12 ]; then
    echo "Updating server_encription_options on cassandra.yaml..."
    start=$(awk '/^server_encryption_options:/{print NR}' cassandra.yaml)
    sed -i '/^server_encryption_options:/,/require_client_auth:/d' cassandra.yaml
@@ -95,12 +95,12 @@ if [ "${svr_enc}" -gt 0 ] && [ "${svr_enc}" -le 12 ]; then
 else
    echo "Non stadard node encryption configuration found"
    echo "Manually update cassandra.yaml with these options:"
-   cat svr_enc_opts.txt 
+   cat svr_enc_opts.txt
 fi
 #
 # Client encryption options
 #
-clt_enc=$(sed -n '/^server_encryption_options:/,/require_client_auth:/p' cassandra.yaml | wc -l)
+clt_enc=$(sed -n '/^client_encryption_options:/,/cipher_suites:/p' cassandra.yaml | wc -l)
 echo "client_encryption_options:
      enabled: true
      # If enabled and optional is set to true encrypted and unencrypted connections are handled.
@@ -115,7 +115,7 @@ echo "client_encryption_options:
      protocol: TLS
      algorithm: SunX509
      store_type: JKS
-     cipher_suites: [TLS_RSA_WITH_AES_128_CBC_SHA]" > clr_enc_opts.txt
+     cipher_suites: [TLS_RSA_WITH_AES_128_CBC_SHA]" > clt_enc_opts.txt
 if [ "${clt_enc}" -gt 0 ] && [ "${clt_enc}" -le 15 ]; then
    echo "Updating client_encription_options on cassandra.yaml..."
    start=$(awk '/^client_encryption_options:/{print NR}' cassandra.yaml)
