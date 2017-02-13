@@ -13,12 +13,12 @@ OU="Operations"
 O="Acme"
 L="Malvern PA"
 C="US"
-keytool -genkey -keyalg RSA -alias node0 -keystore .keystore -storepass cassandra -keypass cassandra -dname "CN=${CN}, OU=${E}, O=${O}, L=${L}, C=${C}"
+keytool -genkey -keyalg RSA -alias ${CN} -keystore .keystore -storepass cassandra -keypass cassandra -dname "CN=${CN}, OU=${E}, O=${O}, L=${L}, C=${C}"
 #
 # Export the public part to node0.cer
 # FILE node0.cer WILL BE USED LATER FOR CQLSHRC
 #
-keytool -export -noprompt -alias node0 -file node0.cer -keystore .keystore -keypass cassandra << !
+keytool -export -noprompt -alias ${CN} -file node0.cer -keystore .keystore -keypass cassandra << !
 cassandra
 !
 #
@@ -32,7 +32,7 @@ cassandra
 # Import the public key to the node0
 # output file is in .truststore
 #
-keytool -import -v -trustcacerts -alias node0 -file node0.cer -keystore .truststore << !
+keytool -import -v -trustcacerts -alias ${CN} -file ${CN}.cer -keystore .truststore << !
 cassandra
 cassandra
 yes
@@ -54,8 +54,8 @@ yes
 # node0.key.pem
 #
 keytool -importkeystore -srckeystore .keystore -destkeystore .keystore.p12 -deststoretype PKCS12 -srcstorepass cassandra -deststorepass cassandra
-openssl pkcs12 -in .keystore.p12 -nokeys         -out node0.cer.pem -passin pass:cassandra
-openssl pkcs12 -in .keystore.p12 -nodes -nocerts -out node0.key.pem -passin pass:cassandra
+openssl pkcs12 -in .keystore.p12 -nokeys         -out ${CN}.cer.pem -passin pass:cassandra
+openssl pkcs12 -in .keystore.p12 -nodes -nocerts -out ${CN}.key.pem -passin pass:cassandra
 #
 # Close the permissions
 #
@@ -63,7 +63,7 @@ chmod 644 .truststore .keystore* *.pem
 }
 
 main(){
-rm -f .truststore .keystore* node0.cer*
+rm -f .truststore .keystore* ${CN}.cer*
 SslCerts > /dev/null 2>&1
 [ "$?" -gt 0 ]  && echo "ERROR: Failure while creating certs, exiting" && exit 1
 echo "Certifictes, .keystore & .truststore were created at $(pwd)"
