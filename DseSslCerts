@@ -2,7 +2,7 @@
 
 function SslCerts(){
 #
-# KEYSTORE SECTION
+# KEYSTORE SECTION 
 # ================
 # Generate a private and public key pair on each node of the cluster.
 # Use an alias that identifies the node
@@ -13,10 +13,10 @@ OU="Operations"
 O="Acme"
 L="Malvern PA"
 C="US"
-keytool -genkey -keyalg RSA -alias node0 -keystore .keystore -storepass cassandra -keypass cassandra -dname "CN=${CN}, OU=${E}, O=${O}, L=${L}, C=${C}"
+keytool -genkey -keyalg RSA -alias node0 -keystore .keystore -storepass cassandra -keypass cassandra -dname "CN=${CN}, OU=${E}, O=${O}, L=${L}, C=${C}" 
 #
 # Export the public part to node0.cer
-# FILE node0.cer WILL BE USED LATER FOR CQLSHRC
+# FILE node0.cer WILL BE USED LATER FOR CQLSHRC 
 #
 keytool -export -noprompt -alias node0 -file node0.cer -keystore .keystore -keypass cassandra << !
 cassandra
@@ -27,7 +27,7 @@ cassandra
 # IN THAT CASE, REPEAT THE STEPS ABOVE ON node1, node2, etc
 #
 #
-# TRUSTSTORE SECTION
+# TRUSTSTORE SECTION 
 # ==================
 # Import the public key to the node0
 # output file is in .truststore
@@ -42,7 +42,7 @@ yes
 # INTO THE KEYSTORE.  IN THE END, ALL NODES SHOULD HAVE THE SAME KEYSTORE
 #
 #
-# CQLSH SECTION
+# CQLSH SECTION 
 # =============
 # cqlsh does not work with the certificate in the format generated.
 # openssl is used to generate a PEM file of the certificate with no keys, node0.cer.pem
@@ -59,49 +59,78 @@ openssl pkcs12 -in .keystore.p12 -nodes -nocerts -out node0.key.pem -passin pass
 #
 # Close the permissions
 #
-chmod 700 .truststore .keystore* *.pem
+chmod 644 .truststore .keystore* *.pem
 }
 
 main(){
 rm -f .truststore .keystore* node0.cer*
 SslCerts > /dev/null 2>&1
-echo "Certifictes, .keystore & .truststore were created at $(pwd)"
-echo "Use them for your cassandra.yaml:"
-echo "
-server_encryption_options:
-    internode_encryption: all
-    keystore: /etc/dse/cassandra/.keystore
-    keystore_password: cassandra
-    truststore: /etc/dse/cassandra/.truststore
-    truststore_password: cassandra
-    # More advanced defaults below:
-    protocol: TLS
-    algorithm: SunX509
-    store_type: JKS
-    cipher_suites: [TLS_RSA_WITH_AES_128_CBC_SHA]
-    require_client_auth: true
-
-# enable or disable client/server encryption.
-client_encryption_options:
-    enabled: true
-    # If enabled and optional is set to true encrypted and unencrypted connections are handled.
-    optional: false
-    keystore: /etc/dse/cassandra/.keystore
-    keystore_password: cassandra
-    require_client_auth: true
-    # Set trustore and truststore_password if require_client_auth is true
-    truststore: /etc/dse/cassandra/.truststore
-    truststore_password: cassandra
-    # More advanced defaults below:
-    protocol: TLS
-    algorithm: SunX509
-    store_type: JKS
-    cipher_suites: [TLS_RSA_WITH_AES_128_CBC_SHA]
-    
-"
-
-echo "Also use the pem files for ~/.cassandra/cqlshrc: "
-echo "
+[ "$?" -gt 0 ]  && echo "ERROR: Failure while creating certs, exiting" && exit 1
+echo "Certifictes, .keystore & .truststore were created at $(pwd)" 
+echo "Backing up configuration..."
+cp cassandra.yaml cassandra.$(date "+%Y%m%d_%H%M%S").yaml
+[ "$?" -gt 0 ]  && echo "ERROR: Failed to backup config file, exiting" && exit 1
+#
+# Node encryption options 
+#
+svr_enc=$(sed -n '/^server_encryption_options:/,/require_client_auth:/p' cassandra.yaml | wc -l)
+echo "server_encryption_options:
+      internode_encryption: all
+      keystore: /etc/dse/cassandra/.keystore
+      keystore_password: cassandra
+      truststore: /etc/dse/cassandra/.truststore
+      truststore_password: cassandra
+      # More advanced defaults below:
+      protocol: TLS
+      algorithm: SunX509 
+      store_type: JKS
+      cipher_suites: [TLS_RSA_WITH_AES_128_CBC_SHA]
+      require_client_auth: true" > svr_enc_opts.txt
+if [ "${svr_enc}" -gt 0 ] && [ "${svr_enc}" -le 12 ]; then 
+   echo "Updating server_encription_options on cassandra.yaml..."
+   start=$(awk '/^server_encryption_options:/{print NR}' cassandra.yaml)
+   sed -i '/^server_encryption_options:/,/require_client_auth:/d' cassandra.yaml
+   sed -i "${start}rsvr_enc_opts.txt" cassandra.yaml
+   rm -f svr_enc_opts.txt
+else
+   echo "Non stadard node encryption configuration found"
+   echo "Manually update cassandra.yaml with these options:"
+   cat svr_enc_opts.txt 
+fi
+#
+# Client encryption options
+#
+clt_enc=$(sed -n '/^server_encryption_options:/,/require_client_auth:/p' cassandra.yaml | wc -l)
+echo "client_encryption_options:
+     enabled: true
+     # If enabled and optional is set to true encrypted and unencrypted connections are handled.
+     optional: false
+     keystore: /etc/dse/cassandra/.keystore
+     keystore_password: cassandra
+     require_client_auth: true
+     # Set trustore and truststore_password if require_client_auth is true
+     truststore: /etc/dse/cassandra/.truststore
+     truststore_password: cassandra
+     # More advanced defaults below:
+     protocol: TLS
+     algorithm: SunX509
+     store_type: JKS
+     cipher_suites: [TLS_RSA_WITH_AES_128_CBC_SHA]" > clr_enc_opts.txt
+if [ "${clt_enc}" -gt 0 ] && [ "${clt_enc}" -le 15 ]; then
+   echo "Updating client_encription_options on cassandra.yaml..."
+   start=$(awk '/^client_encryption_options:/{print NR}' cassandra.yaml)
+   sed -i '/^client_encryption_options:/,/cipher_suites:/d' cassandra.yaml
+   sed -i "${start}rclt_enc_opts.txt" cassandra.yaml
+   rm -f clt_enc_opts.txt
+else
+   echo "Non stadard client encryption configuration found"
+   echo "Manually update cassandra.yaml with these options:"
+   cat clt_enc_opts.txt
+fi
+#
+# CQLSHRC options
+#
+cqlshrc="
 [connection]
 hostname = 127.0.0.1
 port = 9042
@@ -111,9 +140,15 @@ factory = cqlshlib.ssl.ssl_transport_factory
 certfile = /etc/dse/cassandra/node0.cer.pem
 validate = true
 userkey  = /etc/dse/cassandra/node0.key.pem
-usercert = /etc/dse/cassandra/node0.cer.pem
-   
-"
+usercert = /etc/dse/cassandra/node0.cer.pem"
+
+if [ ! -f ~/.cassandra/cqlshrc ]; then
+   mkdir -p ~/.cassandra
+   echo "${cqlshrc}" > ~/.cassandra/cqlshrc
+else
+   echo "Also use the pem files for ~/.cassandra/cqlshrc: "
+   echo "${cqlshrc}"
+fi
 }
 
 main
