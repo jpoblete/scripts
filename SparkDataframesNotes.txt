@@ -134,3 +134,74 @@ df.groupBy("age").count().show()
 | 23|    1|
 +---+-----+
 
+
+Here is an example of how to get rowcount
+
+
+From CQLSH
+==========
+
+CREATE KEYSPACE t31206 WITH replication = {'class': 'SimpleStrategy', 'replication_factor': '3'}  AND durable_writes = true;
+
+CREATE TABLE t31206.tester (
+    id int PRIMARY KEY,
+    info text
+)
+
+Populate the table
+==================
+
+$ awk '{OFS=",";print NR,$0}' /usr/share/dict/words | cqlsh -e "COPY t31206.tester FROM STDIN;"
+Using 3 child processes
+
+Starting copy of t31206.tester with columns ['id', 'info'].
+[Use \. on a line by itself to end input]
+Processed: 235886 rows; Rate:    7868 rows/s; Avg. rate:    8077 rows/s
+235886 rows imported from 1 files in 29.205 seconds (0 skipped).
+
+Spark rowcount
+==============
+
+$ dse spark
+The log file is at /Users/jose/.spark-shell.log
+Welcome to
+      ____              __
+     / __/__  ___ _____/ /__
+    _\ \/ _ \/ _ `/ __/  '_/
+   /___/ .__/\_,_/_/ /_/\_\   version 1.4.2
+      /_/
+
+Using Scala version 2.10.5 (Java HotSpot(TM) 64-Bit Server VM, Java 1.8.0_73)
+Type in expressions to have them evaluated.
+Type :help for more information.
+Creating SparkContext...
+Initializing SparkContext with MASTER: spark://127.0.0.1:7077
+Created spark context..
+Spark context available as sc.
+WARN  2017-02-16 16:35:57,047 org.apache.hadoop.hive.cassandra.CassandraManager: Default CL is LOCAL_ONE. Because of replication factor of local data center is less than 1, set CL to ONE
+Hive context available as hc.
+CassandraSQLContext available as csc.
+
+scala> hc;
+res0: org.apache.spark.sql.hive.HiveContext = org.apache.spark.sql.hive.HiveContext@3f465ae
+
+scala> val sqlContext = new org.apache.spark.sql.SQLContext(sc)
+sqlContext: org.apache.spark.sql.SQLContext = org.apache.spark.sql.SQLContext@8ba7408
+
+scala> import sqlContext.implicits._
+import sqlContext.implicits._
+
+scala> import org.apache.spark.sql._ 
+import org.apache.spark.sql._
+
+scala> val df = sqlContext.read.format("org.apache.spark.sql.cassandra").options(Map("keyspace"->"t31206","table"->"tester")).load
+WARN  2017-02-16 16:39:43,941 com.datastax.driver.core.NettyUtil: Found Netty's native epoll transport, but not running on linux-based operating system. Using NIO instead.
+df: org.apache.spark.sql.DataFrame = [id: int, info: string]
+
+scala> df.count()
+res1: Long = 235886
+
+scala> 
+
+
+
