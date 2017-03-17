@@ -12,6 +12,9 @@ KSP=my_keyspace
 SRC=my_table
 COL="col1, col2, col3"
 PKY="col1"
+#
+# CQLSH invoke
+#
 TIMEOUT="1800"
 CQLSH="cqlsh -u ${USR} -p ${PWD} -k ${KSP} --request-timeout=${TIMEOUT}"
 
