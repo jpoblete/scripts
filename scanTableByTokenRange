@@ -19,12 +19,6 @@ TIMEOUT="1800"
 CQLSH="cqlsh -u ${USR} -p ${PWD} -k ${KSP} --request-timeout=${TIMEOUT}"
 
 function getTokens(){
-for i in $($CQLSH -e "select tokens from system.local;" | awk -F, '/{/{print $0}' | tr -d '{' | tr -d '}' | tr -d ','); do
-    echo ${i//\'/}
-done | sort -n
-}
-
-function getTokens(){
    for i in $($CQLSH -e "select tokens from system.local;" | awk -F, '/{/{print $0}' | tr -d '{' | tr -d '}' | tr -d ','); do
        echo ${i//\'/}
    done | sort -n
