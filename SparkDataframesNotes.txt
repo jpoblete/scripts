@@ -135,6 +135,84 @@ df.groupBy("age").count().show()
 +---+-----+
 
 
+Another example using HiveContext
+
+$ cqlsh
+Connected to Test Cluster at 127.0.0.1:9042.
+[cqlsh 5.0.1 | Cassandra 2.1.17.1439 | DSE 4.8.12 | CQL spec 3.2.1 | Native protocol v3]
+Use HELP for help.
+cqlsh> CREATE KEYSPACE t33734 WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1 } AND durable_writes = 'true';
+cqlsh> use t33734;
+cqlsh:t33734> CREATE TABLE students (
+          ...     name text PRIMARY KEY,
+          ...     age int,
+          ...     subcodes set<text>
+          ... );
+cqlsh:t33734> CREATE TABLE ages (name text PRIMARY KEY, age int);
+cqlsh:t33734> exit
+$ cat students.dat 
+student4,22,{'ART2002'}
+student6,21,{'SCI1002'}
+student3,21,{'ART2001'}
+student1,18,"{'SCI1001', 'SCI1002'}"
+student5,23,"{'HIS3001', 'SCI1001'}"
+student2,19,"{'SCI1001', 'SCI1002'}"
+$ cqlsh -k t33734 -e "COPY students FROM 'students.dat';"
+Using 3 child processes
+
+Starting copy of t33734.students with columns ['name', 'age', 'subcodes'].
+Processed: 6 rows; Rate:       6 rows/s; Avg. rate:       9 rows/s
+6 rows imported from 1 files in 0.660 seconds (0 skipped).
+jose@Mac:~/Downloads/33734$ cqlsh -k t33734 -e "SELECT * FROM students;"
+
+ name     | age | subcodes
+----------+-----+------------------------
+ student3 |  21 |            {'ART2001'}
+ student4 |  22 |            {'ART2002'}
+ student6 |  21 |            {'SCI1002'}
+ student5 |  23 | {'HIS3001', 'SCI1001'}
+ student2 |  19 | {'SCI1001', 'SCI1002'}
+ student1 |  18 | {'SCI1001', 'SCI1002'}
+
+(6 rows)
+$
+$ dse spark
+...
+
+scala> hc
+scala> import org.apache.spark.sql._
+scala> import org.apache.spark.sql.cassandra._
+scala> val df = hc.read.format("org.apache.spark.sql.cassandra").options(Map( "table" -> "students", "keyspace" -> "t33734" )).load()
+scala> df.filter(df("age") > 21).show()
++--------+---+--------------------+
+|    name|age|            subcodes|
++--------+---+--------------------+
+|student4| 22|ArrayBuffer(ART2002)|
+|student5| 23|ArrayBuffer(HIS30...|
++--------+---+--------------------+
+
+scala> df.filter(df("age") > 21).select("name", "age").show()
++--------+---+
+|    name|age|
++--------+---+
+|student4| 22|
+|student5| 23|
++--------+---+
+
+scala> df.filter(df("age") > 21).select("name", "age").write.format("org.apache.spark.sql.cassandra").options(Map("table" -> "ages", "keyspace" -> "t33734")).save()
+scala> val df2 = hc.read.format("org.apache.spark.sql.cassandra").options(Map( "table" -> "ages", "keyspace" -> "t33734" )).load()
+scala> df2.show()
++--------+---+
+|    name|age|
++--------+---+
+|student4| 22|
+|student5| 23|
++--------+---+
+
+scala> 
+
+
+
 Here is an example of how to get rowcount
 
 
