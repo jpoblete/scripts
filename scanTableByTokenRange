@@ -6,6 +6,7 @@
 #
 # * Cassandra is running
 # * The following is known
+#
 USR=cassandra
 PWD=cassandra
 KSP=my_keyspace
@@ -22,6 +23,9 @@ function getTokens(){
    for i in $($CQLSH -e "select tokens from system.local;" | awk -F, '/{/{print $0}' | tr -d '{' | tr -d '}' | tr -d ','); do
        echo ${i//\'/}
    done | sort -n
+   #
+   # We need to split the token subranges if selects start to timeout
+   #
 }
 
 function getDataByTokenRange(){
