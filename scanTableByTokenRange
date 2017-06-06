@@ -16,40 +16,79 @@ PKY="col1"
 #
 # CQLSH invoke
 #
-TIMEOUT="1800"
+TIMEOUT="300"
 CQLSH="cqlsh -u ${USR} -p ${PWD} -k ${KSP} --request-timeout=${TIMEOUT}"
 
 function getTokens(){
    for i in $($CQLSH -e "select tokens from system.local;" | awk -F, '/{/{print $0}' | tr -d '{' | tr -d '}' | tr -d ','); do
        echo ${i//\'/}
    done | sort -n
-   #
-   # We need to split the token subranges if selects start to timeout
-   #
 }
 
 function getDataByTokenRange(){
    i=0
-   tokens=($(getTokens))
-   while [ ${i} -lt ${#tokens[@]} ]; do 
-         [ ${i} -eq 0 ]         && echo "SELECT ${COL} FROM ${SRC} WHERE token(${PKY}) <= ${tokens[i]};" 
-         [ "${tokens[i+1]}" ]   && echo "SELECT ${COL} FROM ${SRC} WHERE token(${PKY}) >  ${tokens[i]} AND token(${PKY}) <= ${tokens[i+1]};"
-         [ ! "${tokens[i+1]}" ] && echo "SELECT ${COL} FROM ${SRC} WHERE token(${PKY}) >  ${tokens[i]};"
+   tokens=(-9223372036854775807 $(getTokens))
+   while [ ${i} -lt ${#tokens[@]} ]; do
+         [ ${i} -eq 0 ]         && echo "SELECT ${COL} FROM ${SRC} WHERE token(${PKY}) <= ${tokens[i]} ALLOW FILTERING;"
+         if [ "${tokens[i+1]}" ]; then
+            if [ "${STP}" -gt 1 ]; then
+               j=0
+               range=$(echo "(${tokens[i+1]} - ${tokens[i]})" | bc -l)
+               step=$(echo "scale=0; ${range} /${STP}" | bc -l)
+               if (( ${range} % ${STP} == 0 )); then
+                  subTokens=($(seq ${tokens[i]} ${step} ${tokens[i+1]}))
+               else
+                  subTokens=($(seq ${tokens[i]} ${step} ${tokens[i+1]}) ${tokens[i+1]})
+               fi
+               while [ ${j} -lt ${#subTokens[@]} ] && [ "${subTokens[j+1]}" ]; do
+                     echo "SELECT ${COL} FROM ${SRC} WHERE token(${PKY}) >  ${subTokens[j]} AND token(${PKY}) <= ${subTokens[j+1]} ALLOW FILTERING;"
+                     ((j++))
+               done
+            else
+               echo "SELECT ${COL} FROM ${SRC} WHERE token(${PKY}) >  ${tokens[i]} AND token(${PKY}) <= ${tokens[i+1]};"
+            fi
+         fi
+         [ ! "${tokens[i+1]}" ] && echo "SELECT ${COL} FROM ${SRC} WHERE token(${PKY}) >  ${tokens[i]} ALLOW FILTERING;"
          ((i++))
-   done
-} 
+   done > getDataByTokenRange.ddl
 
-function cqlExec(){ 
+}
+
+function read_n(){
+   for i in $(seq $1); do
+       read || return
+       echo $REPLY
+    done
+}
+
+function cqlExec(){
   while IFS='' read -r cql || [[ -n "$line" ]]; do
     $CQLSH -e "CONSISTENCY LOCAL_ONE; $cql"                                                                \
-    |awk -F\| '( !/LOCAL_ONE/ && !/'"${COL/, /|}"'/ && !/^\-+/ && !/^\([0-9]+ rows)/ && !/^$/ ){print $0}' 
+    |awk -F\| '( !/LOCAL_ONE/ && !/count\(/ && !/'"${COL/, /|}"'/ && !/^\-+/ && !/^\([0-9]+ rows)/ && !/^$/ ){print $0}'
   done < "$1"
+}
+
+function cqlExecSegments(){
+   i=0
+   while lines="$(read_n ${STP})"; do
+         echo "CONSISTENCY LOCAL_ONE;" >  getDataByTokenRange_${i}.ddl
+         echo "$lines"                 >> getDataByTokenRange_${i}.ddl
+         cqlExec getDataByTokenRange_${i}.ddl > getDataByTokenRange_${i}.dat 2>&1 &
+         ((i++))
+   done < $1
+}
+
+function aggregate(){   
+   cat getDataByTokenRange_${i}.dat > ${KSP}_${SRC}.dat
+   rm -f getDataByTokenRange*.dat getDataByTokenRange*.ddl
 }
 
 main(){
    echo "Begin processing ..."
-   getDataByTokenRange > getDataByTokenRange.ddl
-   cqlExec getDataByTokenRange.ddl
+   getDataByTokenRange
+   cqlExecSegments getDataByTokenRange.ddl
+   wait
+   aggregate
    echo "End procesing"
 }
 
