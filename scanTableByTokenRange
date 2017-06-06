@@ -79,7 +79,7 @@ function cqlExecSegments(){
 }
 
 function aggregate(){   
-   cat getDataByTokenRange_${i}.dat > ${KSP}_${SRC}.dat
+   cat   getDataByTokenRange*.dat > ${KSP}_${SRC}.dat
    rm -f getDataByTokenRange*.dat getDataByTokenRange*.ddl
 }
 
