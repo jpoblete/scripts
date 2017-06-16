@@ -18,7 +18,7 @@ keytool -genkey -keyalg RSA -alias ${CN} -keystore .keystore -storepass cassandr
 # Export the public part to node0.cer
 # FILE node0.cer WILL BE USED LATER FOR CQLSHRC
 #
-keytool -export -noprompt -alias ${CN} -file node0.cer -keystore .keystore -keypass cassandra << !
+keytool -export -noprompt -alias ${CN} -file ${CN}.cer -keystore .keystore -keypass cassandra << !
 cassandra
 !
 #
