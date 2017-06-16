@@ -1,5 +1,12 @@
 #!/bin/bash
 
+#
+#Variables used in more than one function
+
+#
+CN="dseNode"
+
+
 function SslCerts(){
 #
 # KEYSTORE SECTION
@@ -8,7 +15,6 @@ function SslCerts(){
 # Use an alias that identifies the node
 # Output file is in .keystore
 #
-CN="dseNode"
 OU="Operations"
 O="Acme"
 L="Malvern PA"
@@ -137,10 +143,10 @@ port = 9042
 factory = cqlshlib.ssl.ssl_transport_factory
 
 [ssl]
-certfile = /etc/dse/cassandra/node0.cer.pem
+certfile = /etc/dse/cassandra/${CN}.cer.pem
 validate = true
-userkey  = /etc/dse/cassandra/node0.key.pem
-usercert = /etc/dse/cassandra/node0.cer.pem"
+userkey  = /etc/dse/cassandra/${CN}.key.pem
+usercert = /etc/dse/cassandra/${CN}.cer.pem"
 
 if [ ! -f ~/.cassandra/cqlshrc ]; then
    mkdir -p ~/.cassandra
