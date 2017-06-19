@@ -15,4 +15,4 @@ sudo systemctl start vncserver@:1.service
 wget http://chrome.richardlloyd.org.uk/install_chrome.sh
 chmod u+x install_chrome.sh
 sudo ./install_chrome.sh
-sudo shutdown -rf now
+#EOF
