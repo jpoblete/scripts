@@ -1,0 +1,16 @@
+#!/bin/bash
+# Assumes CentOS 7.2 to setup GNOME desktop with VNC
+
+sudo yum -y groupinstall "GNOME Desktop"
+sudo yum -y install tigervnc-server
+sudo cp /lib/systemd/system/vncserver\@.service /etc/systemd/system/vncserver\@:1.service
+sudo sed -i 's/<USER>/automaton/g' /etc/systemd/system/vncserver@:1.service
+vncserver << EOF
+cassandra
+cassandra
+EOF
+su -
+sudo systemctl daemon-reload
+sudo systemctl enable vncserver@:1.service
+sudo systemctl start vncserver@:1.service
+sudo shutdown -rf now
