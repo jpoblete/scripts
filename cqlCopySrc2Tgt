@@ -79,7 +79,7 @@ main(){
    echo "Begin processing ..."
    getDataByTokenRange > getDataByTokenRange.ddl
    cqlExec getDataByTokenRange.ddl
-   echo "End procesing"
+   echo "End processing"
 }
 
 main
