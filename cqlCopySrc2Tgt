@@ -31,23 +31,46 @@ function getTokens(){
    done | sort -n
 }
 
+# When requests per token range timeout and using a larger TIMEOUT does not work
+# Break token ranges into subranges to shorten the request execution time
+# By default STP=1 - we do not break token ranges
+# Practical STP values range between 10-256 
+#
 function getDataByTokenRange(){
    i=0
-   tokens=($(getTokens))
-   while [ ${i} -lt ${#tokens[@]} ]; do 
-         [ ${i} -eq 0 ]         && echo "SELECT ${COL} FROM ${SRC} WHERE token(${PKY}) <= ${tokens[i]};" 
-         [ "${tokens[i+1]}" ]   && echo "SELECT ${COL} FROM ${SRC} WHERE token(${PKY}) >  ${tokens[i]} AND token(${PKY}) <= ${tokens[i+1]};"
-         [ ! "${tokens[i+1]}" ] && echo "SELECT ${COL} FROM ${SRC} WHERE token(${PKY}) >  ${tokens[i]};"
+   STP=1
+   tokens=(-9223372036854775807 $(getTokens))
+   while [ ${i} -lt ${#tokens[@]} ]; do
+         [ ${i} -eq 0 ]         && echo "SELECT ${COL} FROM ${SRC} WHERE token(${PKY}) <= ${tokens[i]} ALLOW FILTERING;"
+         if [ "${tokens[i+1]}" ]; then
+            if [ "${STP}" -gt 1 ]; then
+               j=0
+               range=$(echo "(${tokens[i+1]} - ${tokens[i]})" | bc -l)
+               step=$(echo "scale=0; ${range} /${STP}" | bc -l)
+               if (( ${range} % ${STP} == 0 )); then
+                  subTokens=($(seq ${tokens[i]} ${step} ${tokens[i+1]}))
+               else
+                  subTokens=($(seq ${tokens[i]} ${step} ${tokens[i+1]}) ${tokens[i+1]})
+               fi
+               while [ ${j} -lt ${#subTokens[@]} ] && [ "${subTokens[j+1]}" ]; do
+                     echo "SELECT ${COL} FROM ${SRC} WHERE token(${PKY}) >  ${subTokens[j]} AND token(${PKY}) <= ${subTokens[j+1]} ALLOW FILTERING;"
+                     ((j++))
+               done
+            else
+               echo "SELECT ${COL} FROM ${SRC} WHERE token(${PKY}) >  ${tokens[i]} AND token(${PKY}) <= ${tokens[i+1]};"
+            fi
+         fi
+         [ ! "${tokens[i+1]}" ] && echo "SELECT ${COL} FROM ${SRC} WHERE token(${PKY}) >  ${tokens[i]} ALLOW FILTERING;"
          ((i++))
    done
-} 
+}
 
-function cqlExec(){ 
+function cqlExec(){
   while IFS='' read -r cql || [[ -n "$line" ]]; do
-    $CQLSH -e "CONSISTENCY LOCAL_ONE; $cql"                                                                \
-    |awk -F\| '( !/LOCAL_ONE/ && !/'"${COL/, /|}"'/ && !/^\-+/ && !/^\([0-9]+ rows)/ && !/^$/ ){print $0}' \
-    |sed -e 's/^[ ]*//g' -e 's/[ ]*|[ ]*/|/g'                                                              \
-    |$CQLSH -e "COPY ${TGT} (${COL}) FROM STDIN WITH DELIMITER = '|' and HEADER=false;"
+    $CQLSH -e "CONSISTENCY LOCAL_ONE; $cql"                                             \
+    |awk -F\| '( !/LOCAL_ONE/ && !/^\-+/ && !/^\([0-9]+ rows)/ && !/^$/ ){print $0}'    \
+    |sed -e 's/^[ ]*//g' -e 's/[ ]*|[ ]*/|/g'                                           \
+    |$CQLSH -e "COPY ${TGT} (${COL}) FROM STDIN WITH DELIMITER = '|' and HEADER=true;"
     [ "$?" -gt 0 ] && echo "ERROR: Failed to import data from command: ${command}"
   done < "$1"
 }
