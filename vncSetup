@@ -15,4 +15,18 @@ sudo systemctl start vncserver@:1.service
 wget http://chrome.richardlloyd.org.uk/install_chrome.sh
 chmod u+x install_chrome.sh
 sudo ./install_chrome.sh
+#
+# CTOOL - needs the machine to be authorized
+#
+sudo yum -y install screen
+sudo yum -y install xsel
+sudo pip install virtualenv 
+virtualenv -p `which python2` my-ctool-env
+. my-ctool-env/bin/activate
+#If errors out...
+#virtualenv --clear my-ctool-env
+pip install git+ssh://git@github.com/riptano/ctool.git@master#egg=automaton
+#If upgrading
+#pip install --upgrade git+ssh://git@github.com/riptano/ctool.git@master#egg=automaton
+#Done, setup $HOME/.automaton.conf
 #EOF
