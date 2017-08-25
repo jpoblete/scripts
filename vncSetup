@@ -21,8 +21,8 @@ sudo ./install_chrome.sh
 sudo yum -y install screen
 sudo yum -y install xsel
 sudo pip install virtualenv 
-virtualenv -p `which python2` my-ctool-env
-. my-ctool-env/bin/activate
+virtualenv -p `which python2` ctool-env
+. ctool-env/bin/activate
 #If errors out...
 #virtualenv --clear my-ctool-env
 pip install git+ssh://git@github.com/riptano/ctool.git@master#egg=automaton
