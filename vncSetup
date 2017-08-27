@@ -12,6 +12,10 @@ vncserver << EOF
 cassandra
 cassandra
 EOF
+sudo xrandr --newmode "2560x1440_60.00"  312.25  2560 2752 3024 3488  1440 1443 1448 1493 -hsync +vsync
+sudo xrandr --newmode "1920x1200_60.00"  312.25  2560 2752 3024 3488  1440 1443 1448 1493 -hsync +vsyn
+sudo xrandr --addmode VNC-0 "2560x1440_60.00"
+sudo xrandr --addmode VNC-0 "1920x1200_60.00"
 sudo systemctl daemon-reload
 sudo systemctl enable vncserver@:1.service
 sudo systemctl start vncserver@:1.service
@@ -22,7 +26,7 @@ sudo systemctl start vncserver@:1.service
 #chmod u+x install_chrome.sh
 #sudo ./install_chrome.sh
 #
-# CTOOL - needs the machine to be authorized
+# CTOOL - needs the machine to be authorized or github install is not going to work
 #
 sudo yum -y install screen
 sudo yum -y install xsel
