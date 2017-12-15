@@ -8,7 +8,9 @@
 #
 # Assumptions:
 # * Cassandra is running
-# * The following is known
+# * JMX interface is available
+# * CQLSH/NODETOOL credentials work before executing
+# * This script is to be executed on a per node basis
 # 
 USR=cassandra
 PWD=cassandra
