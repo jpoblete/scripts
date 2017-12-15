@@ -41,11 +41,11 @@ function repairByTokenRange(){
    TBL=2
    tokens=($(getTokens))
    while [ ${i} -lt ${#tokens[@]} ]; do
-         # Do nothing
-         #[ ${i} -eq 0 ]  
          if [ "${tokens[i+1]}" ]; then
             #
+            # If STP > 1
             # We are breaking into subranges
+            # Helps to have an even lower footprint
             #
             if [ "${STP}" -gt 1 ]; then
                j=0
@@ -61,14 +61,13 @@ function repairByTokenRange(){
                      ((j++))
                done
             #
+            # Otherwise... STP=1
             # We are repaiting the whole range
             #
             else
                doRepair ${KSP} ${TBL} ${tokens[i]} ${tokens[i+1]}
             fi
          fi
-         # Do Nothing 
-         #[ ! "${tokens[i+1]}" ] 
          ((i++))
    done 
 }
@@ -91,33 +90,4 @@ main(){
 #
 main
 #
-# Below is the old way this was implemented
-#
-# Repair on the primary range will be executed by keyspace.table & token range
-# Because it works on the primary range, it needs to be executed on each node of the DC/Cluster
-#
-# Assumptions:
-#
-# * Cassandra is running
-# * nodetool is available via PATH env var
-#
-#
-# This is the old way
-# Not quite removing it yet
-#
-#SCH=$(echo "describe schema;" | cqlsh)
-#for KSP in $(echo "${SCH}" | awk '/KEYSPACE/ {print $3}'); do
-#    KSP=${KSP//\"/}
-#    for RNG in $(nodetool describering ${KSP} | awk -F: '/TokenRange/ && /start_token/ {print $2, $3}' | awk '{print "-st_"$1"_-et_"$3}'); do
-#        RNG=${RNG//_/ }
-#        RNG=${RNG//,/}
-#        for TBL in $(echo "${SCH}" | sed -n '/'${KSP}'/,/CREATE KEYSPACE/p' | awk '/CREATE TABLE/ {print $3}'); do
-#            TBL=${TBL/*./}
-#            CMD="nodetool repair ${RNG} -- ${KSP} ${TBL}"
-#            printf "INFO: Executing ${CMD} \n"
-#            $CMD
-#        done
-#    done
-#done
-#
-# EOF
+#EOF
