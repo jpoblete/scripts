@@ -1,11 +1,13 @@
 #!/bin/bash
-
 #
-#Variables used in more than one function
-
+# Variables used in more than one function
 #
 CN="dseNode"
-
+#
+# Execute this script from the same directyory where your cassandra.yaml is located
+# You may change parameters/passwords to suit your neeeds
+# By default, a set of keys is created for all nodes
+#
 
 function SslCerts(){
 #
