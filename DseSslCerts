@@ -1,14 +1,15 @@
 #!/bin/bash
-#
-# Variables used in more than one function
-#
-CN="dseNode"
-#
 # Execute this script from the same directyory where your cassandra.yaml is located
 # You may change parameters/passwords to suit your neeeds
 # By default, a set of keys is created for all nodes
 #
-
+#
+# Variable used in more than one function
+#
+CN="dseNode"
+#
+# Functions
+#
 function SslCerts(){
 #
 # KEYSTORE SECTION
@@ -69,7 +70,9 @@ openssl pkcs12 -in .keystore.p12 -nodes -nocerts -out ${CN}.key.pem -passin pass
 #
 chmod 644 .truststore .keystore* *.pem
 }
-
+#
+# MAIN
+#
 main(){
 rm -f .truststore .keystore* ${CN}.cer*
 SslCerts > /dev/null 2>&1
@@ -158,5 +161,7 @@ else
    echo "${cqlshrc}"
 fi
 }
-
+#
+# Execution
+#
 main
