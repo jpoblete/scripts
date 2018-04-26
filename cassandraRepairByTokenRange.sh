@@ -76,14 +76,20 @@ function repairByTokenRange(){
 }
 ###############################################################
 # Where all comes together
+# You have the options to specify Keyspace (KSP)/Table (TBL)
+# Otherwise the script will try running repair on all keyspaces/tables
+# The logic validates the given parameters are valid
+# Invalid entries will be quietly ignored
 ###############################################################
 main(){
-   SCHEMA=$($CQLSH -e "describe schema;")
-   echo "Begin processing ..."
-   for KSP in $(echo "${SCHEMA}" | awk '/KEYSPACE/ {print $3}'); do
-       for TBL in $(echo "${SCHEMA}" | sed -n '/'${KSP}'/,/CREATE KEYSPACE/p' | awk '/CREATE TABLE/ {print $3}'); do
+   [ "$1" ] && KSP=$1
+   [ "$2" ] && TBL=$2
+   SCHEMA=$($CQLSH -e "DESCRIBE SCHEMA;")
+   echo "Begin processing ...
+   for KSP in $(echo "${SCHEMA}" | awk '/KEYSPACE '"${KSP}"'/ {print $3}'); do
+       for TBL in $(echo "${SCHEMA}" | sed -n '/'${KSP}'/,/CREATE KEYSPACE/p' | awk '/CREATE TABLE '"${TBL}"'/ {print $3}'); do
            TBL=${TBL/*./}
-           repairByTokenRange ${KSP} ${TBL}
+           [ "${KSP}" ] && [ "${TBL}" ] && repairByTokenRange ${KSP} ${TBL}
        done
    done    
    echo "End procesing"
@@ -91,6 +97,6 @@ main(){
 ###############################################################
 # Execution
 ###############################################################
-main
+main $@
 #
 #EOF
