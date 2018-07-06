@@ -100,5 +100,6 @@ sudo apt-get install google-chrome-stable
 sudo -H pip install --upgrade pip
 sudo pip install virtualenv
 virtualenv -p `which python2` ctool-env
+. ctool-env/bin/activate
 pip install git+ssh://git@github.com/riptano/ctool.git@master#egg=automaton
 #EOF
