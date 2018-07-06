@@ -97,7 +97,8 @@ sudo apt-get install google-chrome-stable
 #
 # Go to GitHub and add the SSH key from ~/.ssh/id_rsa.pub so you can install CTOOL
 #
-sudo pip install --upgrade pip
+sudo -H pip install --upgrade pip
 sudo pip install virtualenv
 virtualenv -p `which python2` ctool-env
+pip install git+ssh://git@github.com/riptano/ctool.git@master#egg=automaton
 #EOF
