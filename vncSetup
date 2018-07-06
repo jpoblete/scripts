@@ -39,4 +39,53 @@ pip install git+ssh://git@github.com/riptano/ctool.git@master#egg=automaton
 #
 # Done, setup $HOME/.automaton.conf
 #
+# In GNOME v3 the process above is broken and renders an unusable environment
+# Switched to Ubuntu Trusty and got this to work by doing...
+sudo apt-get update
+sudo apt-get install xfce4 xfce4-goodies tightvncserver
+sudo apt-get install  xfonts-base
+vncserver << EOF
+cassandra
+cassandra
+EOF
+vncserver -kill :1
+echo "
+#!/bin/bash
+xrdb $HOME/.Xresources
+startxfce4 &" > ~/.vnc/xstartup
+chmod +x ~/.vnc/xstartup
+#
+# Put these contents on /etc/init.d/vncserver
+#
+
+#!/bin/bash
+PATH="$PATH:/usr/bin/"
+export USER="automaton"
+DISPLAY="1"
+DEPTH="16"
+GEOMETRY="2560x1440"
+OPTIONS="-depth ${DEPTH} -geometry ${GEOMETRY} :${DISPLAY} -localhost"
+. /lib/lsb/init-functions
+
+case "$1" in
+start)
+log_action_begin_msg "Starting vncserver for user '${USER}' on localhost:${DISPLAY}"
+su ${USER} -c "/usr/bin/vncserver ${OPTIONS}"
+;;
+stop)
+log_action_begin_msg "Stopping vncserver for user '${USER}' on localhost:${DISPLAY}"
+su ${USER} -c "/usr/bin/vncserver -kill :${DISPLAY}"
+;;
+restart)
+$0 stop
+$0 start
+;;
+esac
+exit 0
+#
+#EOF
+sudo chmod +x /etc/init.d/vncserver
+sudo service vncserver start
+vncserver -geometry 2560x1440 &
+
 #EOF
