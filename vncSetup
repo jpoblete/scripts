@@ -87,5 +87,17 @@ exit 0
 sudo chmod +x /etc/init.d/vncserver
 sudo service vncserver start
 vncserver -geometry 2560x1440 &
-
+#
+# Chrome
+#
+wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+echo 'deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main' | sudo tee /etc/apt/sources.list.d/google-chrome.list
+sudo apt-get update 
+sudo apt-get install google-chrome-stable
+#
+# Go to GitHub and add the SSH key from ~/.ssh/id_rsa.pub so you can install CTOOL
+#
+sudo pip install --upgrade pip
+sudo pip install virtualenv
+virtualenv -p `which python2` ctool-env
 #EOF
