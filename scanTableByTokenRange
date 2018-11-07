@@ -11,14 +11,26 @@ USR=cassandra
 PWD=cassandra
 KSP=my_keyspace
 SRC=my_table
-COL="col1, col2, col3"
-PKY="col1"
 #
 # CQLSH invoke
 #
 TIMEOUT="300"
 CQLSH="cqlsh -u ${USR} -p ${PWD} -k ${KSP} --request-timeout=${TIMEOUT}"
-
+#
+# Get Columns from table
+#
+COL=$(${CQLSH} -e "select column_name from system_schema.columns where keyspace_name = '${KSP}' and table_name = '${SRC}';" \
+| awk '( !/^ column_name/ && !/\-\-\-\-\-\-\-/ && !/^(.+ rows)/ && !/^$/ ){print $0}' \
+| sed -e 's/^\s*//' -e '/^$/d' )
+COL=$(echo ${COL} | sed -e 's/ /, /g')
+#
+# Get PK Columns from table
+#
+PKY=$(${CQLSH} -e "SELECT column_name FROM system_schema.columns WHERE keyspace_name = '${KSP}' AND table_name = '${SRC}' AND kind = 'partition_key' ALLOW FILTERING;" \
+| awk '( !/^ column_name/ && !/\-\-\-\-\-\-\-/ && !/^(.+ rows)/ && !/^$/ ){print $0}' \
+| sed -e 's/^\s*//' -e '/^$/d')
+PKY=$(echo ${PKY} | sed -e 's/ /, /g')
+#
 function getTokens(){
    for i in $($CQLSH -e "select tokens from system.local;" | awk -F, '/{/{print $0}' | tr -d '{' | tr -d '}' | tr -d ','); do
        echo ${i//\'/}
