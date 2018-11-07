@@ -11,6 +11,7 @@ USR=cassandra
 PWD=cassandra
 KSP=my_keyspace
 SRC=my_table
+CON=ALL
 #
 # CQLSH invoke
 #
@@ -76,15 +77,15 @@ function read_n(){
 
 function cqlExec(){
   while IFS='' read -r cql || [[ -n "$line" ]]; do
-    $CQLSH -e "CONSISTENCY LOCAL_ONE; $cql"                                                                \
-    |awk -F\| '( !/LOCAL_ONE/ && !/count\(/ && !/'"${COL/, /|}"'/ && !/^\-+/ && !/^\([0-9]+ rows)/ && !/^$/ ){print $0}'
+    $CQLSH -e "CONSISTENCY ${CON}; $cql"                                                                \
+    |awk -F\| '( !/'${CON}'/ && !/count\(/ && !/'"${COL/, /|}"'/ && !/^\-+/ && !/^\([0-9]+ rows)/ && !/^$/ ){print $0}'
   done < "$1"
 }
 
 function cqlExecSegments(){
    i=0
    while lines="$(read_n ${STP})"; do
-         echo "CONSISTENCY LOCAL_ONE;" >  getDataByTokenRange_${i}.ddl
+         echo "CONSISTENCY ${CON};" >  getDataByTokenRange_${i}.ddl
          echo "$lines"                 >> getDataByTokenRange_${i}.ddl
          cqlExec getDataByTokenRange_${i}.ddl > getDataByTokenRange_${i}.dat 2>&1 &
          ((i++))
