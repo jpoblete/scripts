@@ -87,7 +87,7 @@ function cqlExecSegments(){
    while lines="$(read_n ${STP})"; do
          echo "CONSISTENCY ${CON};" >  getDataByTokenRange_${i}.ddl
          echo "$lines"                 >> getDataByTokenRange_${i}.ddl
-         cqlExec getDataByTokenRange_${i}.ddl > getDataByTokenRange_${i}.dat 2>&1 &
+         cqlExec getDataByTokenRange_${i}.ddl > getDataByTokenRange_${i}.dat 2>&1 
          ((i++))
    done < $1
 }
