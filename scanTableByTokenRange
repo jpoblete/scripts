@@ -40,7 +40,7 @@ function getTokens(){
 
 function getDataByTokenRange(){
    i=0
-   STP=256
+   STP=1048576
    tokens=(-9223372036854775807 $(getTokens))
    while [ ${i} -lt ${#tokens[@]} ]; do
          [ ${i} -eq 0 ]         && echo "SELECT ${COL} FROM ${SRC} WHERE token(${PKY}) <= ${tokens[i]} ALLOW FILTERING;"
