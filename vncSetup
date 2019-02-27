@@ -2,115 +2,134 @@
 # Assumes CentOS 7.2 to setup GNOME desktop with VNC
 
 PASSWD="L6pGfn5fEXffsEY7"
-#
-# VNC Desktop install
-#
-sudo yum -y install screen
-screen
-#sudo yum -y groupinstall "GNOME Desktop"
-sudo yum -y groupinstall xfce "MATE Desktop"
-sudo yum -y install tigervnc-server
-sudo yum -y install chromium
-sudo cp /lib/systemd/system/vncserver\@.service /etc/systemd/system/vncserver\@:1.service
-sudo sed -i 's/<USER>/automaton/g' /etc/systemd/system/vncserver@:1.service
-vncserver << EOF
-${PASSWD}
-${PASSWD}
-EOF
-echo "
-#!/bin/bash
-xrdb $HOME/.Xresources
-startxfce4 &" > ~/.vnc/xstartup
-chmod +x ~/.vnc/xstartup
-vncserver -localhost -geometry 2560x1440 &
-#
-#sudo xrandr --newmode "2560x1440_60.00"  312.25  2560 2752 3024 3488  1440 1443 1448 1493 -hsync +vsync
-#sudo xrandr --addmode VNC-0 "2560x1440_60.00"
-#sudo systemctl daemon-reload
-#sudo systemctl enable vncserver@:1.service
-#sudo systemctl start vncserver@:1.service
-#
-# Chrome seems to be now installed by default
-#
-#wget http://chrome.richardlloyd.org.uk/install_chrome.sh
-#chmod u+x install_chrome.sh
-#sudo ./install_chrome.sh
-#
-# CTOOL - needs the machine to be authorized or github install is not going to work
-#
-sudo yum -y install xsel
-sudo pip install virtualenv 
-virtualenv -p `which python2` ctool-env
-. ctool-env/bin/activate
-# If errors out...
-# virtualenv --clear ctool-env
-pip install git+ssh://git@github.com/riptano/ctool.git@master#egg=automaton
-# If upgrading
-# pip install --upgrade git+ssh://git@github.com/riptano/ctool.git@master#egg=automaton
-#
-# Done, setup $HOME/.automaton.conf
-#
-# In GNOME v3 the process above is broken and renders an unusable environment
-# Switched to Ubuntu Trusty and got this to work by doing...
-sudo apt-get update
-sudo apt-get install xfce4 xfce4-goodies tightvncserver
-sudo apt-get install  xfonts-base
-echo "
-#!/bin/bash
-xrdb $HOME/.Xresources
-startxfce4 &" > ~/.vnc/xstartup
-chmod +x ~/.vnc/xstartup
-vncserver << EOF
-cassandra
-cassandra
-EOF
-vncserver -kill :1
-#
-# Put these contents on /etc/init.d/vncserver
-#
-#!/bin/bash
-PATH="$PATH:/usr/bin/"
-export USER="automaton"
-DISPLAY="1"
-DEPTH="16"
-GEOMETRY="2560x1440"
-OPTIONS="-depth ${DEPTH} -geometry ${GEOMETRY} :${DISPLAY} -localhost"
-. /lib/lsb/init-functions
 
-case "$1" in
-start)
-log_action_begin_msg "Starting vncserver for user '${USER}' on localhost:${DISPLAY}"
-su ${USER} -c "/usr/bin/vncserver ${OPTIONS}"
-;;
-stop)
-log_action_begin_msg "Stopping vncserver for user '${USER}' on localhost:${DISPLAY}"
-su ${USER} -c "/usr/bin/vncserver -kill :${DISPLAY}"
-;;
-restart)
-$0 stop
-$0 start
-;;
-esac
-exit 0
-#
-#EOF
-sudo chmod +x /etc/init.d/vncserver
-sudo service vncserver start
-vncserver -geometry 2560x1440 &
-#
-# Chrome
-#
-wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
-echo 'deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main' | sudo tee /etc/apt/sources.list.d/google-chrome.list
-sudo apt-get update 
-sudo apt-get install google-chrome-stable
-#
-# Go to GitHub and add the SSH key from ~/.ssh/id_rsa.pub so you can install CTOOL
-#
-sudo -H pip install --upgrade pip
-sudo pip install virtualenv
-virtualenv -p `which python2` ctool-env
-. ctool-env/bin/activate
-pip install git+ssh://git@github.com/riptano/ctool.git@master#egg=automaton
-#pip install --upgrade git+ssh://git@github.com/riptano/ctool.git@master#egg=automaton
+
+#####################################################
+# FUNCTIONS
+#####################################################
+function screenStage(){
+   #
+   # Screen install
+   #
+   sudo yum -y install screen
+}
+
+function vncStage(){
+   #
+   # MATE Desktop/VNC install 
+   #
+   #sudo yum -y groupinstall "GNOME Desktop"
+   sudo yum -y groupinstall xfce "MATE Desktop"
+   sudo yum -y install tigervnc-server
+   #sudo yum -y install chromium
+   sudo cp /lib/systemd/system/vncserver\@.service /etc/systemd/system/vncserver\@:1.service
+   sudo sed -i 's/<USER>/automaton/g' /etc/systemd/system/vncserver@:1.service
+   vncserver << ...EOF
+   ${PASSWD}
+   ${PASSWD}
+...EOF
+   echo "
+   #!/bin/bash
+   xrdb $HOME/.Xresources
+   startxfce4 &" > ~/.vnc/xstartup
+   chmod +x ~/.vnc/xstartup
+   vncserver -localhost -geometry 2560x1440 &
+   #
+   #sudo xrandr --newmode "2560x1440_60.00"  312.25  2560 2752 3024 3488  1440 1443 1448 1493 -hsync +vsync
+   #sudo xrandr --addmode VNC-0 "2560x1440_60.00"
+   #sudo systemctl daemon-reload
+   #sudo systemctl enable vncserver@:1.service
+   #sudo systemctl start vncserver@:1.service
+   #
+   # Chrome seems to be now installed by default
+   #
+   #wget http://chrome.richardlloyd.org.uk/install_chrome.sh
+   #chmod u+x install_chrome.sh
+   #sudo ./install_chrome.sh
+}
+
+function ctoolStage(){
+   #
+   # Go to GitHub and add the SSH key from ~/.ssh/id_rsa.pub so you can install CTOOL
+   #
+   sudo -H pip install --upgrade pip
+   sudo pip install virtualenv
+   virtualenv -p `which python2` ctool-env
+   . ctool-env/bin/activate
+   pip install git+ssh://git@github.com/riptano/ctool.git@master#egg=automaton
+   #
+   # CTOOL - needs the machine to be authorized or github install is not going to work
+   #
+   sudo yum -y install xsel
+   sudo pip install virtualenv 
+   virtualenv -p `which python2` ctool-env
+   . ctool-env/bin/activate
+   # If errors out...
+   # virtualenv --clear ctool-env
+   pip install git+ssh://git@github.com/riptano/ctool.git@master#egg=automaton
+   # If upgrading
+   # pip install --upgrade git+ssh://git@github.com/riptano/ctool.git@master#egg=automaton
+   #
+   # Done, setup $HOME/.automaton.conf 
+   #
+}
+
+function ubuntuStage(){
+   # In GNOME v3 the process above is broken and renders an unusable environment
+   # Switched to Ubuntu Trusty and got this to work by doing...
+   sudo apt-get update
+   sudo apt-get install xfce4 xfce4-goodies tightvncserver
+   sudo apt-get install  xfonts-base
+   echo "
+   #!/bin/bash
+   xrdb $HOME/.Xresources
+   startxfce4 &" > ~/.vnc/xstartup
+   chmod +x ~/.vnc/xstartup
+   vncserver << ...EOF
+   ${PASSWD}
+   ${PASSWD}
+...EOF
+   vncserver -kill :1
+   #
+   # Put these contents on /etc/init.d/vncserver
+   #
+   #!/bin/bash
+   PATH="$PATH:/usr/bin/"
+   export USER="automaton"
+   DISPLAY="1"
+   DEPTH="16"
+   GEOMETRY="2560x1440"
+   OPTIONS="-depth ${DEPTH} -geometry ${GEOMETRY} :${DISPLAY} -localhost"
+   . /lib/lsb/init-functions
+   case "$1" in
+        start)
+               log_action_begin_msg "Starting vncserver for user '${USER}' on localhost:${DISPLAY}"
+               su ${USER} -c "/usr/bin/vncserver ${OPTIONS}"
+               ;;
+        stop)
+               log_action_begin_msg "Stopping vncserver for user '${USER}' on localhost:${DISPLAY}"
+               su ${USER} -c "/usr/bin/vncserver -kill :${DISPLAY}"
+               ;;
+        restart)
+               $0 stop
+               $0 start
+               ;;
+   esac
+   exit 0
+   #
+   #EOF
+   sudo chmod +x /etc/init.d/vncserver
+   sudo service vncserver start
+   vncserver -geometry 2560x1440 &
+}
+
+function chromeStage(){
+   #
+   # Chrome
+   #
+   wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+   echo 'deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main' | sudo tee /etc/apt/sources.list.d/google-chrome.list
+   sudo apt-get update 
+   sudo apt-get install google-chrome-stable
+}
 #EOF
