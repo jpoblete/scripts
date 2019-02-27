@@ -1,20 +1,21 @@
 #!/bin/bash
 # Assumes CentOS 7.2 to setup GNOME desktop with VNC
 
+PASSWD="L6pGfn5fEXffsEY7"
 #
 # VNC Desktop install
 #
 sudo yum -y install screen
 screen
-sudo yum -y groupinstall "GNOME Desktop"
+#sudo yum -y groupinstall "GNOME Desktop"
 sudo yum -y groupinstall xfce "MATE Desktop"
 sudo yum -y install tigervnc-server
 sudo yum -y install chromium
 sudo cp /lib/systemd/system/vncserver\@.service /etc/systemd/system/vncserver\@:1.service
 sudo sed -i 's/<USER>/automaton/g' /etc/systemd/system/vncserver@:1.service
 vncserver << EOF
-cassandra
-cassandra
+${PASSWD}
+${PASSWD}
 EOF
 echo "
 #!/bin/bash
