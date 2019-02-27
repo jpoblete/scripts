@@ -20,7 +20,7 @@ echo "
 xrdb $HOME/.Xresources
 startxfce4 &" > ~/.vnc/xstartup
 chmod +x ~/.vnc/xstartup
-vncserver -geometry 2560x1440 &
+vncserver -localhost -geometry 2560x1440 &
 #
 #sudo xrandr --newmode "2560x1440_60.00"  312.25  2560 2752 3024 3488  1440 1443 1448 1493 -hsync +vsync
 #sudo xrandr --addmode VNC-0 "2560x1440_60.00"
