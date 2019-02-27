@@ -5,6 +5,7 @@
 # VNC Desktop install
 #
 sudo yum -y install screen
+screen
 sudo yum -y groupinstall "GNOME Desktop"
 sudo yum -y groupinstall xfce "MATE Desktop"
 sudo yum -y install tigervnc-server
