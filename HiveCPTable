@@ -3,17 +3,30 @@
 # * Source (SRC) and Target (TGT) databases can BOTH be accessed from the same machine
 # * Authentication mechanism is already setup 
 
+#FILES
+DESCRIBE=describe.hql
+OBJ_INFO=objects.dat
+
+
+#VARS
 SRC_JDBC='jdbc:hive2://c1402-node2.coelab.cloudera.com:2181,c1402-node3.coelab.cloudera.com:2181,c1402-node4.coelab.cloudera.com:2181/;serviceDiscoveryMode=zooKeeper;zooKeeperNamespace=hiveserver2-interactive'
 SRC_DB='source'
 TGT_JDBC='jdbc:hive2://c1402-node2.coelab.cloudera.com:2181,c1402-node3.coelab.cloudera.com:2181,c1402-node4.coelab.cloudera.com:2181/;serviceDiscoveryMode=zooKeeper;zooKeeperNamespace=hiveserver2-interactive'
 TGT_DB='target'
 
+#FUNCTIONS
 
-tables=$(beeline -u "${SRC_JDBC}" --outputformat=dsv --silent=true --showHeader=false -e "USE ${SRC_DB}; SHOW TABLES;")
+#MAIN
+TABLES=$(beeline -u "${SRC_JDBC}" --outputformat=dsv --silent=true --showHeader=false -e "USE ${SRC_DB}; SHOW TABLES;")
 [ -z "${tables}" ] && echo "ERROR: No tables returned for DB: ${SRC_DB}" && exit 1
-echo "USE ${SRC_DB};" > describe.hql
-for tbl in ${tables}; do
+echo "USE ${SRC_DB};" > ${DESCRIBE}
+for tbl in ${TABLES}; do
     echo "SELECT \"--- OBJECT:${tbl}:---\"; SHOW CREATE TABLE ${tbl}; SELECT \"--- DESCRIBE FORMATTED ---\"; DESCRIBE FORMATTED ${tbl}; SELECT \"+++ OBJECT:${tbl}:+++\";"
-done >> describe.hql
-beeline -u "${SRC_JDBC}" --outputformat=dsv --silent=true --showHeader=false -f describe.hql > objects.dat
+done >> ${DESCRIBE}
+beeline -u "${SRC_JDBC}" --outputformat=dsv --silent=true --showHeader=false -f describe.hql > ${OBJ_INFO}
 
+OBJECTS=$(awk -F: '/^--- OBJECT:/ {print $2}' ${OBJ_INFO})
+for obj in ${OBJECTS}; do
+    sed -n '/--- OBJECT:'${obj}':---/,/+++ OBJECT:'${obj}':+++/p' ${OBJ_INFO} > ${obj}_${OBJ_INFO}
+done
+#EOF
