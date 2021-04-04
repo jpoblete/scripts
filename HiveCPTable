@@ -18,7 +18,9 @@ TGT_DB='target'
 #FUNCTIONS
 procObj (){
    infoFile=$1
-   ddl=$()
+   objName=${infoFile}
+   ddl=$(sed -n '/--- OBJECT:/,/^--- DESCRIBE FORMATTED ---/p' ${infoFile} | sed -e '1d;$d')
+   
 }
 
 #MAIN
