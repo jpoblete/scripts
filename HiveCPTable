@@ -16,21 +16,35 @@ TGT_JDBC='jdbc:hive2://c1402-node2.coelab.cloudera.com:2181,c1402-node3.coelab.c
 TGT_DB='target'
 
 #FUNCTIONS
+BeeLine (){
+   jdbc="$1"
+   exec="$2"
+   file=$3
+   [ "${exec}" ] && beeline -u "${jdbc}" --outputformat=dsv --silent=true --showHeader=false -e "${exec};"
+   [ "${file}" ] && beeline -u "${jdbc}" --outputformat=dsv --silent=true --showHeader=false -f ${file}
+   status=$?
+}
+
 procObj (){
    infoFile=$1
-   objName=${infoFile}
-   ddl=$(sed -n '/--- OBJECT:/,/^--- DESCRIBE FORMATTED ---/p' ${infoFile} | sed -e '1d;$d')
-   
+   objName=${infoFile/_objects.dat/}
+   objDdl=$(sed -n '/--- OBJECT:/,/^--- DESCRIBE FORMATTED ---/p' ${infoFile} | sed -e '1d;$d')
+   isPartitoned=$(sed -n '/Partition Information/,/Detailed Table Information/p' ${infoFile} | sed -e '/^#/d;/^|/d')
+   if [ "${isPartitoned}" ]; then
+      objParts="
+   else
+      objDataDdl="SELECT * FROM ${objName};"
+   fi
 }
 
 #MAIN
-TABLES=$(beeline -u "${SRC_JDBC}" --outputformat=dsv --silent=true --showHeader=false -e "USE ${SRC_DB}; SHOW TABLES;")
+TABLES=$(BeeLine "${SRC_JDBC}" "USE ${SRC_DB}; SHOW TABLES;")
 [ -z "${tables}" ] && echo "ERROR: No tables returned for DB: ${SRC_DB}" && exit 1
 echo "USE ${SRC_DB};" > ${DESCRIBE}
 for tbl in ${TABLES}; do
     echo "SELECT \"--- OBJECT:${tbl}:---\"; SHOW CREATE TABLE ${tbl}; SELECT \"--- DESCRIBE FORMATTED ---\"; DESCRIBE FORMATTED ${tbl}; SELECT \"+++ OBJECT:${tbl}:+++\";"
 done >> ${DESCRIBE}
-beeline -u "${SRC_JDBC}" --outputformat=dsv --silent=true --showHeader=false -f describe.hql > ${OBJ_INFO}
+BeeLine "${SRC_JDBC}" "" describe.hql > ${OBJ_INFO}
 
 OBJECTS=$(awk -F: '/^--- OBJECT:/ {print $2}' ${OBJ_INFO})
 for obj in ${OBJECTS}; do
