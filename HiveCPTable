@@ -2,7 +2,9 @@
 #
 # This is intended to copy a database from one cluster to another copnsidering the following
 #
-# * Source (SRC) and Target (TGT) databases can BOTH be accessed from the same machine
+# * The database is small enough to make this practical as it does not use DistCP
+#   For a robust solution, use Cloudera Manager BDR
+# * Source (SRC) and Target (TGT) databases can BOTH be accessed from the same machine using Beeline
 # * Authentication mechanism is already setup 
 #
 #FILES
@@ -32,8 +34,10 @@ procObj (){
    isPartitoned=$(sed -n '/Partition Information/,/Detailed Table Information/p' ${infoFile} | sed -e '/^#/d;/^|/d')
    if [ "${isPartitoned}" ]; then
       objParts="
+      #WIP
    else
       objDataDdl="SELECT * FROM ${objName};"
+      #WIP
    fi
 }
 
