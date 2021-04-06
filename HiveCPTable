@@ -22,8 +22,8 @@ BeeLine (){
    jdbc="$1"
    exec="$2"
    file=$3
-   [ "${exec}" ] && beeline -u "${jdbc}" --outputformat=dsv --silent=true --showHeader=false -e "${exec};"
-   [ "${file}" ] && beeline -u "${jdbc}" --outputformat=dsv --silent=true --showHeader=false -f ${file}
+   [ "${exec}"    ] && beeline -u "${jdbc}" --outputformat=dsv --silent=true --showHeader=false -e "${exec};"
+   [ -f "${file}" ] && beeline -u "${jdbc}" --outputformat=dsv --silent=true --showHeader=false -f ${file}
    status=$?
 }
 
@@ -33,7 +33,7 @@ procObj (){
    objDdl=$(sed -n '/--- OBJECT:/,/^--- DESCRIBE FORMATTED ---/p' ${infoFile} | sed -e '1d;$d')
    isPartitoned=$(sed -n '/Partition Information/,/Detailed Table Information/p' ${infoFile} | sed -e '/^#/d;/^|/d')
    if [ "${isPartitoned}" ]; then
-      objParts="
+      objPartitions=$(BeeLine "${SRC_JDBC}" "SHOW PARTITIONS ${SRC_DB}.${objName};" "")
       #WIP
    else
       objDataDdl="SELECT * FROM ${objName};"
