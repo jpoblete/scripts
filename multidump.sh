@@ -41,11 +41,10 @@
 ########################
 
 usage(){
-   echo "Usage: $0 -i <interval> -c <count> -pid <PID> -pgm [jstack|kill]"
+   echo "Usage: $0 -i <interval> -c <count> -pid <PID>"
    echo "       Default interval: 5 secs"
    echo "       Default count   : 60"
-   echo "       Default PID     : DSE java PID"
-   echo "       Default PGM     : jstack"
+   echo "       Default PID     : JVM's PID"
    exit 1
 }
 
@@ -65,9 +64,6 @@ while [ $# -gt 0 ] ; do
                  shift 2
                  ;;
            -pid) PID=$2
-                 shift 2
-                 ;;
-           -pgm) PGM=$2
                  shift 2
                  ;;
            *)    echo "Unknown option: $1"
@@ -90,35 +86,22 @@ done
 [ -z "${COUNT}"    ] && COUNT=60
 ( [ "${INTERVAL}" -le 0 ] || [ -z "${COUNT}" -le 0 ] ) && usage
 #
-# Check the PID
+# The PID is used to:
 #
-if [ -z ${PID} ]; then
-   [ -f /var/run/dse/dse.pid ] && PID=$(cat /var/run/dse/dse.pid)
-   [ -z "${PID}" ]             && PID=$(ps -ef | awk '/java/ && !/awk/ && /cassandra/ {print $2}')
-   [ -z "${PID}" ]             && echo "Error: Could not determine Cassandra\'s PID, exiting..." && exit 1
+# * Verify the PID belongs to a JAVA process
+# * Localize JSTACK command 
+#
+if [ -z "${PID}" ]; then
+   echo "ERROR: PID is required but none was provided, exiting..." && exit 1
 else
-   if [ "${PID}" != "$(ps -p ${PID} | tail -1 | awk '{print $1}')" ]; then
-      echo "Error: Could not find a java PID=${PID}, exiting..."
-      exit 1
+   OWNER=$(ps -o euser fp ${PID} | awk '!/EUSER/ {print $1}')
+   JAVA=$(ps -o cmd   fp ${PID}  | awk ' /java/  {print $1}')
+   JSTACK=${JAVA%java}jstack
+   if [ "${PID}" ] &&  [ -f "${JSTACK}" ]; then
+      PGM=${JSTACK}
+   else
+      echo "ERROR: JSTACK command could not be found, exiting..." && exit 1
    fi
-fi
-#
-# We use jstack by default or whatever specified on cmd line
-# Also check that jstack is present/executable
-#
-if [ ! -x "${PGM}" ] then 
-   [ "${PGM}" ] && echo "Notice: ${PGM} provided is not executable"
-   PGM="jstack"
-   if [ "${PGM}" != "kill" ]; then
-      if [ -x "$(which jstack)" ]; then
-         PGM=$(which jstack)
-      else
-         PGM="kill"   
-         echo "Notice: jstack not found, using kill -3 instead"
-      fi
-   fi
-else
-   echo "Notice: Using ${PGM}"
 fi
 #
 # Check who is executing this script
@@ -126,14 +109,13 @@ fi
 #
 ME=${USER}
 ME_UID=$(id -u ${ME})
-C_USER_UID=$(ps -e -o uid,pid,cmd | awk '( $2 == '"${PID}"'){print $1}')
-C_USER=$(getent passwd ${C_USER_UID} | cut -d: -f1)
+OWNER_UID=$(ps -e -o uid,pid,cmd | awk '( $2 == '"${PID}"'){print $1}')
 #
-# If this is executed as the cassandra user, then continue to main()
+# If this is executed as the OWNER, then continue to main()
 # Otherwise, we need to fork as the JVM owner 
 #
-if [ "${ME}" != "${C_USER}" ]; then
-   sudo su -c "$(echo "$0 -i ${INTERVAL} -c ${COUNT} -pid ${PID} -pgm ${PGM}")" -s /bin/bash ${C_USER}
+if [ "${ME}" != "${C_USER}" ] && [ "${ME}" == "root" ]; then
+   su -s /bin/bash -c "$(echo "$0 -i ${INTERVAL} -c ${COUNT} -pid ${PID}")" - ${OWNER}
 else
    main
 fi
@@ -141,11 +123,7 @@ fi
 # This is where the thread dump is executed
 #
 main(){
-   if [ "$(echo ${PGM##*\/})" == jstack ]; then
-      PGM="${PGM} -l"
-   else
-      PGM="${PGM} -3"
-   fi
+   PGM="${PGM} -l"
    echo "Begin processing..."
    rm -f /tmp/top.out /tmp/jstack.out/ /tmp/topThreads.out
    RUN="true"
