@@ -1,4 +1,3 @@
-
 #!/bin/bash
 ########################
 # PYTHON CODE BLOCK
@@ -44,7 +43,7 @@ usage(){
    echo "Usage: $0 -i <interval> -c <count> -pid <PID>"
    echo "       Default interval: 5 secs"
    echo "       Default count   : 60"
-   echo "       Default PID     : JVM's PID"
+   echo "       PID             : Required parameter"
    exit 1
 }
 
@@ -55,6 +54,30 @@ runPython(){
    /tmp/topThreads.py top.out jstack.out | tee -a  /tmp/topThreads.out
 }
 
+main(){
+   PGM="${PGM} -l"
+   TIME=$(date '+%Y-%m-%d_%H%M%S')
+   echo "Begin processing..."
+   rm -f /tmp/top.out /tmp/jstack.out/ /tmp/topThreads.out
+   RUN="true"
+   if [ "${RUN}" ]; then
+      for i in `seq $COUNT`; do
+          echo "stack trace $i of $COUNT"    >> /tmp/jstack.out
+          ${PGM} $PID                        >> /tmp/jstack.out
+          echo "------------------------"    >> /tmp/jstack.out
+          top -bHc -d $INTERVAL -n 1 -p $PID >> /tmp/top.out
+          sleep $INTERVAL
+      done
+   fi
+   runPython
+   echo ""
+   echo "Collecting files..."
+   tar czvpf multidump_${TIME}.tgz *.out
+   echo "End processing, please collect /tmp/multidump_${TIME}.tgz"
+}
+#
+# Pre-checks
+#
 while [ $# -gt 0 ] ; do
         case "$1" in
            -i)   INTERVAL=$2
@@ -73,73 +96,42 @@ while [ $# -gt 0 ] ; do
         esac
 done
 #
-# These are our arguments
-#
-#INTERVAL=$1
-#COUNT=$2
-#PID=$3
-#PGM=$4
-#
 # Check we have valid interval/counts
 #
 [ -z "${INTERVAL}" ] && INTERVAL=5
 [ -z "${COUNT}"    ] && COUNT=60
-( [ "${INTERVAL}" -le 0 ] || [ -z "${COUNT}" -le 0 ] ) && usage
+[ -z "${PID}"      ] && usage
 #
 # The PID is used to:
 #
 # * Verify the PID belongs to a JAVA process
-# * Localize JSTACK command 
+# * Localize JSTACK command
 #
-if [ -z "${PID}" ]; then
-   echo "ERROR: PID is required but none was provided, exiting..." && exit 1
+OWNER=$(ps -o euser fp ${PID} | awk '!/EUSER/ {print $1}')
+JAVA=$(ps -o cmd   fp ${PID}  | awk ' /java/  {print $1}')
+JSTACK=${JAVA%java}jstack
+if [ "${PID}" ] &&  [ -f "${JSTACK}" ]; then
+   PGM=${JSTACK}
 else
-   OWNER=$(ps -o euser fp ${PID} | awk '!/EUSER/ {print $1}')
-   JAVA=$(ps -o cmd   fp ${PID}  | awk ' /java/  {print $1}')
-   JSTACK=${JAVA%java}jstack
-   if [ "${PID}" ] &&  [ -f "${JSTACK}" ]; then
-      PGM=${JSTACK}
-   else
-      echo "ERROR: JSTACK command could not be found, exiting..." && exit 1
-   fi
+   echo "ERROR: JSTACK command could not be found, exiting..." && exit 1
 fi
 #
-# Check who is executing this script
-# Find out who is the cassandra user -> JVM owner 
+# Who is executing this script
+# Find out who is the JVM owner
 #
 ME=${USER}
 ME_UID=$(id -u ${ME})
 OWNER_UID=$(ps -e -o uid,pid,cmd | awk '( $2 == '"${PID}"'){print $1}')
 #
 # If this is executed as the OWNER, then continue to main()
-# Otherwise, we need to fork as the JVM owner 
+# Otherwise, we need to fork as the JVM owner
 #
 if [ "${ME}" != "${C_USER}" ] && [ "${ME}" == "root" ]; then
-   su -s /bin/bash -c "$(echo "$0 -i ${INTERVAL} -c ${COUNT} -pid ${PID}")" - ${OWNER}
+   SCRIPT=$0
+   SCRIPT=${SCRIPT/.\//}
+   SCRIPT=$(pwd)/${SCRIPT}
+   su -s /bin/bash -c "$(echo "${SCRIPT} -i ${INTERVAL} -c ${COUNT} -pid ${PID}")" - ${OWNER}
 else
    main
 fi
-#
-# This is where the thread dump is executed
-#
-main(){
-   PGM="${PGM} -l"
-   echo "Begin processing..."
-   rm -f /tmp/top.out /tmp/jstack.out/ /tmp/topThreads.out
-   RUN="true"
-   if [ "${RUN}" ]; then
-      for i in `seq $COUNT`; do
-          echo "stack trace $i of $COUNT"    >> /tmp/jstack.out
-          ${PGM} $PID                        >> /tmp/jstack.out
-          echo "------------------------"    >> /tmp/jstack.out
-          top -bHc -d $INTERVAL -n 1 -p $PID >> /tmp/top.out
-          sleep $INTERVAL
-      done
-   fi
-   runPython
-   echo ""
-   echo "Collecting files..."
-   tar czvpf multidump.tgz *.out
-   echo "End processing, please collect /tmp/multidump.tgz"
-}
 #EOF
