@@ -2,7 +2,7 @@
 ########################
 # PYTHON CODE BLOCK
 ########################
-#=##!/usr/bin/env python
+#=##!/usr/bin/env python2.7
 #=## topthreads.py - takes the top and thread dump output from multidump.sh and produces a
 #=## list of the top threads by average CPU consumption including Java thread names
 #=## usage: topthreads.py [top file] [thread dump file]
@@ -72,6 +72,7 @@ main(){
    runPython
    echo ""
    echo "Collecting files..."
+   LOG=$(lsof -Pn -p ${PID} | awk '/\.log/ || /\.out/ {print $NF}')
    tar czvpf multidump_${TIME}.tgz *.out
    echo "End processing, please collect /tmp/multidump_${TIME}.tgz"
 }
